@@ -14,8 +14,6 @@
 #
 ##############################################################################
 
-from math import ceil
-
 from tests.utils.generic import get_random_uuid4_str
 
 
