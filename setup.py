@@ -41,5 +41,6 @@ setup(
     namespace_packages=['hubspot'],
     install_requires=[
         'requests >= 2.2.1',
+        'pyrecord >= 1.0a1',
         ],
     )
