@@ -16,6 +16,12 @@
 
 from pyrecord import Record
 
+from hubspot.contacts._generic_utils import ipaginate
+from hubspot.contacts.formatters import format_contacts_data_for_saving
+
+
+_HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
+
 
 Contact = Record.create_type(
     'Contact',
@@ -80,8 +86,7 @@ def _get_profile_data_from_contact_data(contact_data):
             contact_profile_data = related_contact_profile_data
             break
 
-    assert contact_profile_data  # TODO: Replace with HubspotInvalidResponseDataError
-
+    assert contact_profile_data
     return contact_profile_data
 
 
@@ -92,8 +97,7 @@ def _get_email_address_from_contact_profile_data(contact_profile_data):
             contact_email_address = identity['value']
             break
 
-    assert contact_email_address  # TODO: Replace with HubspotInvalidResponseDataError
-
+    assert contact_email_address
     return contact_email_address
 
 
@@ -101,3 +105,10 @@ def _get_property_items_flattened(contact_properties_data):
     contact_properties = \
         {key: data['value'] for key, data in contact_properties_data.items()}
     return contact_properties
+
+
+def save_contacts(contacts, connection):
+    contacts_batches = ipaginate(contacts, _HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+    for contacts_batch in contacts_batches:
+        contacts_batch_data = format_contacts_data_for_saving(contacts_batch)
+        connection.send_post_request('/contact/batch/', contacts_batch_data)

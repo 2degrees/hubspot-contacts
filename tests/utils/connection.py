@@ -14,42 +14,59 @@
 #
 ##############################################################################
 
-from abc import ABCMeta
-from abc import abstractmethod
-
 from nose.tools import eq_
 from pyrecord import Record
 
 
 MockRequestData = Record.create_type(
     'MockRequestData',
+    'method',
     'path_info',
     'query_string_args',
+    'serializable_body',
+    query_string_args=None,
+    serializable_body=None,
     )
 
 
 class MockPortalConnection(object):
 
-    __metaclass__ = ABCMeta
-
-    def __init__(self):
+    def __init__(self, response_data_maker=None):
         super(MockPortalConnection, self).__init__()
 
+        self._response_data_maker = response_data_maker
         self.requests_data = []
 
     def send_get_request(self, path_info, query_string_args=None):
         query_string_args = query_string_args or {}
-        request_data = MockRequestData(path_info, query_string_args)
+        request_data = MockRequestData(
+            'GET',
+            path_info,
+            query_string_args,
+            )
+        return self._send_request(request_data)
 
+    def send_post_request(self, path_info, serializable_body):
+        request_data = MockRequestData(
+            'POST',
+            path_info,
+            serializable_body=serializable_body,
+            )
+        return self._send_request(request_data)
+
+    def _send_request(self, request_data):
         self.requests_data.append(request_data)
 
-        stub_data = self._get_stub_data(request_data)
-        return stub_data
-
-    @abstractmethod
-    def _get_stub_data(self, request_data):
-        pass
+        if self._response_data_maker:
+            response_data = self._response_data_maker(request_data)
+        else:
+            response_data = None
+        return response_data
 
     def assert_requested_path_infos_equal(self, expected_path_info):
         for request_data in self.requests_data:
             eq_(expected_path_info, request_data.path_info)
+
+    def assert_request_methods_equal(self, expected_request_method):
+        for request_data in self.requests_data:
+            eq_(expected_request_method, request_data.method)
