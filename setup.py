@@ -43,4 +43,5 @@ setup(
         'requests >= 2.2.1',
         'pyrecord >= 1.0a1',
         ],
+    test_suite='nose.collector',
     )
