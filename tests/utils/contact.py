@@ -16,7 +16,7 @@
 
 from hubspot.contacts import Contact
 
-from tests.utils.generic import get_random_uuid4_str
+from tests.utils.generic import get_random_uuid4_unicode
 
 
 def make_contacts(count, **properties):
@@ -34,6 +34,6 @@ def make_contact(vid, **properties):
 
 
 def _get_random_email_address():
-    email_user_name = get_random_uuid4_str()
+    email_user_name = get_random_uuid4_unicode()
     email_address = email_user_name + '@example.com'
     return email_address
