@@ -23,9 +23,9 @@ MockRequestData = Record.create_type(
     'method',
     'path_info',
     'query_string_args',
-    'serializable_body',
+    'body_deserialization',
     query_string_args=None,
-    serializable_body=None,
+    body_deserialization=None,
     )
 
 
@@ -46,11 +46,11 @@ class MockPortalConnection(object):
             )
         return self._send_request(request_data)
 
-    def send_post_request(self, path_info, serializable_body):
+    def send_post_request(self, path_info, body_deserialization):
         request_data = MockRequestData(
             'POST',
             path_info,
-            serializable_body=serializable_body,
+            body_deserialization=body_deserialization,
             )
         return self._send_request(request_data)
 

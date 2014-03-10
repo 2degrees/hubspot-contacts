@@ -301,4 +301,4 @@ class TestSavingContacts(BaseMethodTestCase):
 
     def _assert_contacts_sent_in_request(self, contacts, request_data):
         contacts_data = format_contacts_data_for_saving(contacts)
-        eq_(contacts_data, request_data.serializable_body)
+        eq_(contacts_data, request_data.body_deserialization)
