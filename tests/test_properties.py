@@ -3,14 +3,14 @@ from nose.tools import eq_
 from hubspot.contacts.properties import Property
 from hubspot.contacts.properties import get_all_properties
 
-from tests.test_contacts import BaseMethodTestCase
-from tests.test_contacts import _RemoteMethod
+from tests.utils import BaseMethodTestCase
+from tests.utils import RemoteMethod
 from tests.utils.connection import MockPortalConnection
 
 
 class TestGettingAllProperties(BaseMethodTestCase):
 
-    _REMOTE_METHOD = _RemoteMethod('/properties', 'GET')
+    _REMOTE_METHOD = RemoteMethod('/properties', 'GET')
 
     def test(self):
         connection = \

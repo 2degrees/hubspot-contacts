@@ -14,14 +14,11 @@
 #
 ##############################################################################
 
-from abc import ABCMeta
-from abc import abstractproperty
 from functools import partial
 
 from nose.tools import assert_false
 from nose.tools import assert_in
 from nose.tools import eq_
-from pyrecord import Record
 
 from hubspot.contacts import Contact
 from hubspot.contacts import _HUBSPOT_BATCH_SAVING_SIZE_LIMIT
@@ -29,6 +26,8 @@ from hubspot.contacts import get_all_contacts
 from hubspot.contacts import save_contacts
 from hubspot.contacts.formatters import format_contacts_data_for_saving
 
+from tests.utils import BaseMethodTestCase
+from tests.utils import RemoteMethod
 from tests.utils.connection import MockPortalConnection
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
@@ -39,26 +38,9 @@ from tests.utils.method_response_formatters.all_contacts_retrieval import \
 _HUBSPOT_DEFAULT_PAGE_SIZE = 20
 
 
-_RemoteMethod = Record.create_type('_RemoteMethod', 'path_info', 'http_method')
-
-
-class BaseMethodTestCase(object):
-
-    __metaclass__ = ABCMeta
-
-    _REMOTE_METHOD = abstractproperty()
-
-    @classmethod
-    def _assert_expected_remote_method_used(cls, connection):
-        connection.assert_requested_path_infos_equal(
-            cls._REMOTE_METHOD.path_info,
-            )
-        connection.assert_request_methods_equal(cls._REMOTE_METHOD.http_method)
-
-
 class TestGettingAllContacts(BaseMethodTestCase):
 
-    _REMOTE_METHOD = _RemoteMethod('/lists/all/contacts/all', 'GET')
+    _REMOTE_METHOD = RemoteMethod('/lists/all/contacts/all', 'GET')
 
     def _make_connection(self, contacts):
         response_data_maker = \
@@ -257,7 +239,7 @@ def _get_contacts_with_properties_filtered(contacts, properties):
 
 class TestSavingContacts(BaseMethodTestCase):
 
-    _REMOTE_METHOD = _RemoteMethod('/contact/batch/', 'POST')
+    _REMOTE_METHOD = RemoteMethod('/contact/batch/', 'POST')
 
     def setup(self):
         self.connection = MockPortalConnection()
