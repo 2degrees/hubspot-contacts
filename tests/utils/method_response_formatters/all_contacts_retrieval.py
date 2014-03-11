@@ -35,7 +35,7 @@ def format_data_from_all_contacts_retrieval(
     page_last_contact_vid = page_last_contact.vid if page_last_contact else 0
 
     page_contacts_data = \
-        _format_contacts_as_data_from_all_comtacts_retrieval(page_contacts)
+        _format_contacts_as_data_from_all_contacts_retrieval(page_contacts)
 
     return {
         'contacts': page_contacts_data,
@@ -44,7 +44,7 @@ def format_data_from_all_contacts_retrieval(
         }
 
 
-def _format_contacts_as_data_from_all_comtacts_retrieval(all_contacts):
+def _format_contacts_as_data_from_all_contacts_retrieval(all_contacts):
     contacts_data = []
     for contact in all_contacts:
         contact_data = {
