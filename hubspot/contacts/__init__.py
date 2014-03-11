@@ -15,7 +15,6 @@
 ##############################################################################
 
 from pyrecord import Record
-from six import text_type
 from voluptuous import All
 from voluptuous import Length
 from voluptuous import Schema
@@ -44,19 +43,19 @@ _CANONICAL_IDENTITY_PROFILE_SCHEMA = {
     'identities': All(
         [],
         AnyListItemValidates(
-            {'type': Constant(u'EMAIL'), 'value': text_type},
+            {'type': Constant(u'EMAIL'), 'value': unicode},
             ),
         ),
     }
 
-_IS_PROPERTY_VALUE = Schema({'value': text_type}, required=True, extra=True)
+_IS_PROPERTY_VALUE = Schema({'value': unicode}, required=True, extra=True)
 
 _GET_ALL_CONTACTS_SCHEMA = Schema(
     {
         'contacts': [{
             'vid': int,
             'properties': DynamicDictionary(
-                text_type,
+                unicode,
                 All(_IS_PROPERTY_VALUE, GetDictValue('value')),
                 ),
             'identity-profiles': All(
