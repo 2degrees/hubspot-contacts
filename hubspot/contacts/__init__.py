@@ -38,6 +38,7 @@ Contact = Record.create_type(
     'vid',
     'email_address',
     'properties',
+    'sub_contacts',
     )
 
 
@@ -113,27 +114,31 @@ def _get_all_contacts_data(connection, properties):
 
 
 def _build_contact_from_data(contact_data):
-    email_address = _get_email_address_from_contact_data(contact_data)
+    canonical_profile_data, additional_profiles_data = \
+        _get_profiles_data_from_contact_data(contact_data)
+    email_address = \
+        _get_email_address_from_contact_profile_data(canonical_profile_data)
+    sub_contacts = _get_sub_contacts_from_contact_data(additional_profiles_data)
+
     properties = contact_data['properties']
-    return Contact(contact_data['vid'], email_address, properties)
+
+    return Contact(contact_data['vid'], email_address, properties, sub_contacts)
 
 
-def _get_email_address_from_contact_data(contact_data):
-    contact_profile_data = _get_profile_data_from_contact_data(contact_data)
-    contact_email_address = \
-        _get_email_address_from_contact_profile_data(contact_profile_data)
-    return contact_email_address
-
-
-def _get_profile_data_from_contact_data(contact_data):
-    contact_profile_data = None
+def _get_profiles_data_from_contact_data(contact_data):
+    additional_profiles_data = []
     for related_contact_profile_data in contact_data['identity-profiles']:
         if related_contact_profile_data['vid'] == contact_data['vid']:
-            contact_profile_data = related_contact_profile_data
-            break
+            canonical_profile_data = related_contact_profile_data
+        else:
+            additional_profiles_data.append(related_contact_profile_data)
 
-    assert contact_profile_data
-    return contact_profile_data
+    return canonical_profile_data, additional_profiles_data
+
+
+def _get_sub_contacts_from_contact_data(contact_profiles_data):
+    sub_contacts = [profile['vid'] for profile in contact_profiles_data]
+    return sub_contacts
 
 
 def _get_email_address_from_contact_profile_data(contact_profile_data):
@@ -142,7 +147,6 @@ def _get_email_address_from_contact_profile_data(contact_profile_data):
         if identity['type'] == 'EMAIL':
             contact_email_address = identity['value']
             break
-
     return contact_email_address
 
 

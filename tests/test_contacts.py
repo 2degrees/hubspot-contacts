@@ -84,8 +84,8 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
     def test_getting_existing_properties(self):
         expected_contacts = [
-            make_contact(1, p1='foo'),
-            make_contact(2, p1='baz', p2='bar'),
+            make_contact(1, properties={'p1': 'foo'}),
+            make_contact(2, properties={'p1': 'baz', 'p2': 'bar'}),
             ]
         connection = self._make_connection(expected_contacts)
 
@@ -95,6 +95,7 @@ class TestGettingAllContacts(BaseMethodTestCase):
                 original_contact.vid,
                 original_contact.email_address,
                 {'p1': original_contact.properties['p1']},
+                [],
                 )
             expected_contacts_with_expected_properties.append(
                 expected_contact_with_expected_properties,
@@ -125,6 +126,22 @@ class TestGettingAllContacts(BaseMethodTestCase):
         self._assert_expected_remote_method_used(connection)
 
         eq_(1, len(connection.requests_data))
+
+    def test_contacts_with_sub_contacts(self):
+        expected_sub_contacts = [2, 3]
+        expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
+        connection = self._make_connection([expected_contacts])
+
+        retrieved_contacts = get_all_contacts(connection)
+        eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
+
+    def test_contacts_without_sub_contacts(self):
+        expected_sub_contacts = []
+        expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
+        connection = self._make_connection([expected_contacts])
+
+        retrieved_contacts = get_all_contacts(connection)
+        eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
 
     def _assert_retrieved_contacts_match(
         self,

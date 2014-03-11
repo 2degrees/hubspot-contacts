@@ -20,21 +20,23 @@ from six import text_type
 from tests.utils.generic import get_uuid4_str
 
 
-def make_contacts(count, **properties):
+def make_contacts(count):
     contacts = []
     for contact_vid in range(1, count + 1):
-        contact = make_contact(contact_vid, **properties)
+        contact = make_contact(contact_vid)
         contacts.append(contact)
     return contacts
 
 
-def make_contact(vid, **properties):
+def make_contact(vid, properties=None, sub_contacts=None):
+    properties = properties or {}
+    sub_contacts = sub_contacts or []
     unicode_properties = {
         text_type(k): text_type(v) for k, v in properties.items()
         }
 
     email_address = _get_random_email_address()
-    contact = Contact(vid, email_address, unicode_properties)
+    contact = Contact(vid, email_address, unicode_properties, sub_contacts)
     return contact
 
 
