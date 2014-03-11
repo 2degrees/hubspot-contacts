@@ -62,17 +62,20 @@ class TestDynamicDictionary(object):
         eq_({}, self.schema({}))
 
     def test_non_dictionary(self):
-        """ An 'Invalid' exception is raised"""
+        """
+        An 'Invalid' exception is raised when the value is not a dictionary
+
+        """
         with assert_raises(Invalid):
             self.schema(('value', 'whatever'))
 
     def test_invalid_dictionary_key(self):
-        """ An 'Invalid' exception is raised"""
+        """ An 'Invalid' exception is raised when any key is invalid """
         with assert_raises(Invalid):
             self.schema({1: 2})
 
     def test_invalid_dictionary_value(self):
-        """ An 'Invalid' exception is raised"""
+        """ An 'Invalid' exception is raised when any value is invalid """
         with assert_raises(Invalid):
             self.schema({'value': [1, 2, 3]})
 
