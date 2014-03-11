@@ -13,3 +13,24 @@
 # INFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
+from abc import ABCMeta
+from abc import abstractproperty
+
+from pyrecord import Record
+
+
+RemoteMethod = Record.create_type('RemoteMethod', 'path_info', 'http_method')
+
+
+class BaseMethodTestCase(object):
+
+    __metaclass__ = ABCMeta
+
+    _REMOTE_METHOD = abstractproperty()
+
+    @classmethod
+    def _assert_expected_remote_method_used(cls, connection):
+        connection.assert_requested_path_infos_equal(
+            cls._REMOTE_METHOD.path_info,
+            )
+        connection.assert_request_methods_equal(cls._REMOTE_METHOD.http_method)
