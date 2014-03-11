@@ -15,9 +15,16 @@
 ##############################################################################
 
 from pyrecord import Record
+from voluptuous import All
+from voluptuous import Length
+from voluptuous import Schema
 
 from hubspot.contacts._generic_utils import ipaginate
 from hubspot.contacts.formatters import format_contacts_data_for_saving
+from hubspot.contacts.schema_validators import AnyListItemValidates
+from hubspot.contacts.schema_validators import Constant
+from hubspot.contacts.schema_validators import DynamicDictionary
+from hubspot.contacts.schema_validators import GetDictValue
 
 
 _HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
@@ -28,6 +35,38 @@ Contact = Record.create_type(
     'vid',
     'email_address',
     'properties',
+    )
+
+
+_CANONICAL_IDENTITY_PROFILE_SCHEMA = {
+    'vid': int,
+    'identities': All(
+        [],
+        AnyListItemValidates({'type': Constant(u'EMAIL'), 'value': unicode}),
+        ),
+    }
+
+_IS_PROPERTY_VALUE = Schema({'value': basestring}, required=True, extra=True)
+
+_GET_ALL_CONTACTS_SCHEMA = Schema(
+    {
+        'contacts': [{
+            'vid': int,
+            'properties': DynamicDictionary(
+                basestring,
+                All(_IS_PROPERTY_VALUE, GetDictValue('value')),
+                ),
+            'identity-profiles': All(
+                [{'vid': int, 'identities': []}],
+                Length(min=1),
+                AnyListItemValidates(_CANONICAL_IDENTITY_PROFILE_SCHEMA),
+                ),
+            }],
+        'has-more': bool,
+        'vid-offset': int,
+        },
+    required=True,
+    extra=True,
     )
 
 
@@ -57,6 +96,7 @@ def _get_all_contacts_data(connection, page_size, properties):
             '/lists/all/contacts/all',
             query_string_args,
             )
+        contacts_data = _GET_ALL_CONTACTS_SCHEMA(contacts_data)
 
         for contact_data in contacts_data['contacts']:
             yield contact_data
@@ -68,7 +108,7 @@ def _get_all_contacts_data(connection, page_size, properties):
 
 def _build_contact_from_data(contact_data):
     email_address = _get_email_address_from_contact_data(contact_data)
-    properties = _get_property_items_flattened(contact_data['properties'])
+    properties = contact_data['properties']
     return Contact(contact_data['vid'], email_address, properties)
 
 
@@ -97,14 +137,7 @@ def _get_email_address_from_contact_profile_data(contact_profile_data):
             contact_email_address = identity['value']
             break
 
-    assert contact_email_address
     return contact_email_address
-
-
-def _get_property_items_flattened(contact_properties_data):
-    contact_properties = \
-        {key: data['value'] for key, data in contact_properties_data.items()}
-    return contact_properties
 
 
 def save_contacts(contacts, connection):
