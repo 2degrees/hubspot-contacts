@@ -15,7 +15,6 @@
 ##############################################################################
 
 from hubspot.contacts import Contact
-from six import text_type
 
 from tests.utils.generic import get_uuid4_str
 
@@ -31,12 +30,8 @@ def make_contacts(count):
 def make_contact(vid, properties=None, sub_contacts=None):
     properties = properties or {}
     sub_contacts = sub_contacts or []
-    unicode_properties = {
-        text_type(k): text_type(v) for k, v in properties.items()
-        }
-
     email_address = _get_random_email_address()
-    contact = Contact(vid, email_address, unicode_properties, sub_contacts)
+    contact = Contact(vid, email_address, properties, sub_contacts)
     return contact
 
 

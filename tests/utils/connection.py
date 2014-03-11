@@ -17,6 +17,8 @@
 from nose.tools import eq_
 from pyrecord import Record
 
+from tests.utils.generic import convert_object_strings_to_unicode
+
 
 MockRequestData = Record.create_type(
     'MockRequestData',
@@ -61,7 +63,7 @@ class MockPortalConnection(object):
             response_data = self._response_data_maker(request_data)
         else:
             response_data = None
-        return response_data
+        return convert_object_strings_to_unicode(response_data)
 
     def assert_requested_path_infos_equal(self, expected_path_info):
         for request_data in self.requests_data:

@@ -16,9 +16,24 @@
 
 from uuid import uuid4 as get_uuid4
 
-from six import text_type
-
 
 def get_uuid4_str():
-    random_uuid4 = get_uuid4()
-    return text_type(random_uuid4)
+    uuid4 = get_uuid4()
+    return str(uuid4)
+
+
+def convert_object_strings_to_unicode(object_):
+    if isinstance(object_, str):
+        object_converted = unicode(object_)
+    elif isinstance(object_, (list, tuple)):
+        object_converted = \
+            [convert_object_strings_to_unicode(value) for value in object_]
+    elif isinstance(object_, dict):
+        object_converted = {}
+        for key, value in object_.items():
+            object_converted[convert_object_strings_to_unicode(key)] = \
+                convert_object_strings_to_unicode(value)
+    else:
+        object_converted = object_
+
+    return object_converted
