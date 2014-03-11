@@ -44,7 +44,11 @@ _CANONICAL_IDENTITY_PROFILE_SCHEMA = {
     'identities': All(
         [],
         AnyListItemValidates(
-            {'type': Constant(u'EMAIL'), 'value': text_type},
+            Schema(
+                {'type': Constant(u'EMAIL'), 'value': text_type},
+                required=True,
+                extra=True,
+                ),
             ),
         ),
     }
