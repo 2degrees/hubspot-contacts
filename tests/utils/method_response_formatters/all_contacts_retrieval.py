@@ -14,7 +14,7 @@
 #
 ##############################################################################
 
-from tests.utils.generic import get_random_uuid4_unicode
+from tests.utils.generic import get_random_uuid4_str
 
 
 def format_data_from_all_contacts_retrieval(
@@ -72,7 +72,7 @@ def _format_contact_profiles_data(contact):
     contact_profile_data = {
         'vid': contact.vid,
         'identities': [
-            {'type': u'LEAD_GUID', 'value': get_random_uuid4_unicode()},
+            {'type': u'LEAD_GUID', 'value': get_random_uuid4_str()},
             {'type': u'EMAIL', 'value': contact.email_address},
             ],
         }

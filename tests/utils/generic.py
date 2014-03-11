@@ -16,7 +16,9 @@
 
 from uuid import uuid4 as get_uuid4
 
+from six import text_type
 
-def get_random_uuid4_unicode():
+
+def get_random_uuid4_str():
     random_uuid4 = get_uuid4()
-    return unicode(random_uuid4)
+    return text_type(random_uuid4)

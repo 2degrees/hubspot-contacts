@@ -15,6 +15,7 @@
 ##############################################################################
 
 from pyrecord import Record
+from six import text_type
 from voluptuous import Any
 from voluptuous import Schema
 
@@ -32,7 +33,7 @@ _PROPERTY_TYPES = (
 
 _GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION = [
     {
-        'name': unicode,
+        'name': text_type,
         'type': Any(*_PROPERTY_TYPES),
         'options': [],
         }

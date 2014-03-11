@@ -25,4 +25,11 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
 
 def _replicate_get_all_properties_response_data(request_data):
-    return [{'name': u'lastmodifieddate', 'type': 'datetime', 'options': []}]
+    properties = [
+        {
+            'name': u'lastmodifieddate',
+            'type': 'datetime',
+            'options': [],
+            },
+        ]
+    return properties
