@@ -15,15 +15,15 @@
 ##############################################################################
 
 from json import dumps as json_serialize
-from urllib import urlencode
-from urlparse import parse_qs
-from urlparse import urlsplit
-from urlparse import urlunsplit
 
 from pkg_resources import get_distribution
 from pyrecord import Record
 from requests.auth import AuthBase
 from requests.sessions import Session
+from six.moves.urllib.parse import parse_qs
+from six.moves.urllib.parse import urlencode
+from six.moves.urllib.parse import urlsplit
+from six.moves.urllib.parse import urlunsplit
 
 from hubspot.contacts.exc import HubspotAuthenticationError
 from hubspot.contacts.exc import HubspotClientError
