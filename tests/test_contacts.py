@@ -35,7 +35,7 @@ from tests.utils.method_response_formatters.all_contacts_retrieval import \
     format_data_from_all_contacts_retrieval
 
 
-_HUBSPOT_DEFAULT_PAGE_SIZE = 20
+_HUBSPOT_DEFAULT_PAGE_SIZE = 100
 
 
 class TestGettingAllContacts(BaseMethodTestCase):
@@ -55,8 +55,6 @@ class TestGettingAllContacts(BaseMethodTestCase):
         self._assert_expected_remote_method_used(connection)
 
         eq_(1, len(connection.requests_data))
-        request_data = connection.requests_data[0]
-        assert_false(request_data.query_string_args)
 
     def test_not_exceeding_default_pagination_size(self):
         contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE - 1
@@ -68,8 +66,6 @@ class TestGettingAllContacts(BaseMethodTestCase):
         self._assert_expected_remote_method_used(connection)
 
         eq_(1, len(connection.requests_data))
-        request_data = connection.requests_data[0]
-        assert_false(request_data.query_string_args)
 
     def test_exceeding_default_pagination_size(self):
         contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
@@ -82,59 +78,9 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
         eq_(2, len(connection.requests_data))
 
-        request_data1 = connection.requests_data[0]
-        assert_false(request_data1.query_string_args)
-
-        request_data2 = connection.requests_data[1]
-        eq_(1, len(request_data2.query_string_args))
-        assert_in('vidOffset', request_data2.query_string_args)
-
-    def test_not_exceeding_custom_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE
-        expected_contacts = make_contacts(contacts_count)
-        connection = self._make_connection(expected_contacts)
-
-        page_size = contacts_count + 1
-        self._assert_retrieved_contacts_match(
-            expected_contacts,
-            connection,
-            page_size,
-            )
-
-        self._assert_expected_remote_method_used(connection)
-
-        eq_(1, len(connection.requests_data))
-        request_data = connection.requests_data[0]
-        eq_(1, len(request_data.query_string_args))
-        assert_in('count', request_data.query_string_args)
-        eq_(page_size, request_data.query_string_args['count'])
-
-    def test_exceeding_custom_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE
-        expected_contacts = make_contacts(contacts_count)
-        connection = self._make_connection(expected_contacts)
-
-        page_size = contacts_count - 1
-        self._assert_retrieved_contacts_match(
-            expected_contacts,
-            connection,
-            page_size,
-            )
-
-        self._assert_expected_remote_method_used(connection)
-
-        eq_(2, len(connection.requests_data))
-
-        request_data1 = connection.requests_data[0]
-        eq_(1, len(request_data1.query_string_args))
-        assert_in('count', request_data1.query_string_args)
-        eq_(page_size, request_data1.query_string_args['count'])
-
-        request_data2 = connection.requests_data[1]
-        eq_(2, len(request_data2.query_string_args))
-        assert_in('count', request_data2.query_string_args)
-        eq_(page_size, request_data2.query_string_args['count'])
-        assert_in('vidOffset', request_data2.query_string_args)
+        request_data = connection.requests_data[1]
+        eq_(2, len(request_data.query_string_args))
+        assert_in('vidOffset', request_data.query_string_args)
 
     def test_getting_existing_properties(self):
         expected_contacts = [
@@ -165,7 +111,7 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
         eq_(1, len(connection.requests_data))
         request_data = connection.requests_data[0]
-        eq_(1, len(request_data.query_string_args))
+        eq_(2, len(request_data.query_string_args))
         assert_in('property', request_data.query_string_args)
         eq_(properties, request_data.query_string_args['property'])
 
@@ -193,18 +139,20 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
 def _replicate_get_all_contacts_response_data(contacts, request_data):
     query_string_args = request_data.query_string_args
-    page_size = query_string_args.get('count', _HUBSPOT_DEFAULT_PAGE_SIZE)
     last_contact_vid = query_string_args.get('vidOffset')
     properties = query_string_args.get('property', [])
 
-    contacts_in_page = \
-        _get_contacts_in_page(contacts, last_contact_vid, page_size)
+    contacts_in_page = _get_contacts_in_page(
+        contacts,
+        last_contact_vid,
+        _HUBSPOT_DEFAULT_PAGE_SIZE,
+        )
     contacts_in_page = \
         _get_contacts_with_properties_filtered(contacts_in_page, properties)
     contacts_in_page_data = format_data_from_all_contacts_retrieval(
         contacts_in_page,
         contacts,
-        page_size,
+        _HUBSPOT_DEFAULT_PAGE_SIZE,
         )
     return contacts_in_page_data
 

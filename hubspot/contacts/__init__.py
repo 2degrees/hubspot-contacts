@@ -30,6 +30,8 @@ from hubspot.contacts.schema_validators import GetDictValue
 
 _HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
 
+_HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
+
 
 Contact = Record.create_type(
     'Contact',
@@ -77,18 +79,15 @@ _GET_ALL_CONTACTS_SCHEMA = Schema(
     )
 
 
-def get_all_contacts(connection, page_size=None, properties=()):
-    all_contacts_data = \
-        _get_all_contacts_data(connection, page_size, properties)
+def get_all_contacts(connection, properties=()):
+    all_contacts_data = _get_all_contacts_data(connection, properties)
     for contact_data in all_contacts_data:
         contact = _build_contact_from_data(contact_data)
         yield contact
 
 
-def _get_all_contacts_data(connection, page_size, properties):
-    base_query_string_args = {}
-    if page_size:
-        base_query_string_args['count'] = page_size
+def _get_all_contacts_data(connection, properties):
+    base_query_string_args = {'count': _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
     if properties:
         base_query_string_args['property'] = properties
 
