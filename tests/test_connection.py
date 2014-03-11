@@ -16,7 +16,6 @@
 
 from json import dumps as json_serialize
 from urlparse import parse_qs
-from urlparse import urlparse
 
 from nose.tools import assert_dict_contains_subset
 from nose.tools import assert_false
@@ -27,6 +26,7 @@ from nose.tools import eq_
 from nose.tools import ok_
 from requests.adapters import HTTPAdapter as RequestsHTTPAdapter
 from requests.models import Response as RequestsResponse
+from six.moves.urllib.parse import urlparse
 
 from hubspot.contacts.connection import APIKey
 from hubspot.contacts.connection import OAuthKey
