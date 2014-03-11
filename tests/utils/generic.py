@@ -17,6 +17,6 @@
 from uuid import uuid4 as get_uuid4
 
 
-def get_random_uuid4_str():
+def get_uuid4_str():
     random_uuid4 = get_uuid4()
     return str(random_uuid4)
