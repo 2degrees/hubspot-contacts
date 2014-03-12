@@ -15,19 +15,37 @@
 ##############################################################################
 
 from pyrecord import Record
+from voluptuous import Optional
 from voluptuous import Schema
+
+from hubspot.contacts.properties import _build_property_specialization_from_data
 
 
 PropertyGroup = Record.create_type(
     'PropertyGroup',
     'name',
     'display_name',
+    'properties',
     display_name=None,
+    properties=None,
     )
 
 
 _PROPERTY_GROUP_CREATION_SCHEMA = Schema(
     {'name': unicode, 'displayName': unicode},
+    required=True,
+    extra=True,
+    )
+
+
+_PROPERTY_SCHEMA = {}
+
+_PROPERTY_GROUPS_RETRIEVAL_SCHEMA = Schema(
+    [{
+        'name': unicode,
+        'displayName': unicode,
+        Optional('properties'): [_PROPERTY_SCHEMA],
+        }],
     required=True,
     extra=True,
     )
@@ -45,3 +63,27 @@ def create_property_group(property_group, connection):
         )
     response_data = _PROPERTY_GROUP_CREATION_SCHEMA(response_data)
     return response_data
+
+
+def get_all_property_groups(connection):
+    response_data = connection.send_get_request('/groups')
+    property_groups_data = _PROPERTY_GROUPS_RETRIEVAL_SCHEMA(response_data)
+    property_groups = \
+        [_build_property_group_from_data(g) for g in property_groups_data]
+    return property_groups
+
+
+def _build_property_group_from_data(property_group_data):
+    property_group = PropertyGroup(
+        property_group_data['name'],
+        property_group_data['displayName'],
+        )
+
+    if 'properties' in property_group_data:
+        properties_data = property_group_data['properties']
+        properties = [
+            _build_property_specialization_from_data(p) for p in properties_data
+            ]
+        property_group.properties = properties
+
+    return property_group
