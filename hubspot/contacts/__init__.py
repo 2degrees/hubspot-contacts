@@ -29,12 +29,15 @@ from hubspot.contacts.schema_validators import GetDictValue
 
 _HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
 
+_HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
+
 
 Contact = Record.create_type(
     'Contact',
     'vid',
     'email_address',
     'properties',
+    'sub_contacts',
     )
 
 
@@ -43,7 +46,11 @@ _CANONICAL_IDENTITY_PROFILE_SCHEMA = {
     'identities': All(
         [],
         AnyListItemValidates(
-            {'type': Constant(u'EMAIL'), 'value': unicode},
+            Schema(
+                {'type': Constant(u'EMAIL'), 'value': unicode},
+                required=True,
+                extra=True,
+                ),
             ),
         ),
     }
@@ -72,18 +79,15 @@ _GET_ALL_CONTACTS_SCHEMA = Schema(
     )
 
 
-def get_all_contacts(connection, page_size=None, properties=()):
-    all_contacts_data = \
-        _get_all_contacts_data(connection, page_size, properties)
+def get_all_contacts(connection, properties=()):
+    all_contacts_data = _get_all_contacts_data(connection, properties)
     for contact_data in all_contacts_data:
         contact = _build_contact_from_data(contact_data)
         yield contact
 
 
-def _get_all_contacts_data(connection, page_size, properties):
-    base_query_string_args = {}
-    if page_size:
-        base_query_string_args['count'] = page_size
+def _get_all_contacts_data(connection, properties):
+    base_query_string_args = {'count': _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
     if properties:
         base_query_string_args['property'] = properties
 
@@ -109,27 +113,31 @@ def _get_all_contacts_data(connection, page_size, properties):
 
 
 def _build_contact_from_data(contact_data):
-    email_address = _get_email_address_from_contact_data(contact_data)
+    canonical_profile_data, additional_profiles_data = \
+        _get_profiles_data_from_contact_data(contact_data)
+    email_address = \
+        _get_email_address_from_contact_profile_data(canonical_profile_data)
+    sub_contacts = _get_sub_contacts_from_contact_data(additional_profiles_data)
+
     properties = contact_data['properties']
-    return Contact(contact_data['vid'], email_address, properties)
+
+    return Contact(contact_data['vid'], email_address, properties, sub_contacts)
 
 
-def _get_email_address_from_contact_data(contact_data):
-    contact_profile_data = _get_profile_data_from_contact_data(contact_data)
-    contact_email_address = \
-        _get_email_address_from_contact_profile_data(contact_profile_data)
-    return contact_email_address
-
-
-def _get_profile_data_from_contact_data(contact_data):
-    contact_profile_data = None
+def _get_profiles_data_from_contact_data(contact_data):
+    additional_profiles_data = []
     for related_contact_profile_data in contact_data['identity-profiles']:
         if related_contact_profile_data['vid'] == contact_data['vid']:
-            contact_profile_data = related_contact_profile_data
-            break
+            canonical_profile_data = related_contact_profile_data
+        else:
+            additional_profiles_data.append(related_contact_profile_data)
 
-    assert contact_profile_data
-    return contact_profile_data
+    return canonical_profile_data, additional_profiles_data
+
+
+def _get_sub_contacts_from_contact_data(contact_profiles_data):
+    sub_contacts = [profile['vid'] for profile in contact_profiles_data]
+    return sub_contacts
 
 
 def _get_email_address_from_contact_profile_data(contact_profile_data):
@@ -138,7 +146,6 @@ def _get_email_address_from_contact_profile_data(contact_profile_data):
         if identity['type'] == 'EMAIL':
             contact_email_address = identity['value']
             break
-
     return contact_email_address
 
 

@@ -56,6 +56,14 @@ class MockPortalConnection(object):
             )
         return self._send_request(request_data)
 
+    def send_put_request(self, path_info, body_deserialization):
+        request_data = MockRequestData(
+            'PUT',
+            path_info,
+            body_deserialization=body_deserialization,
+            )
+        return self._send_request(request_data)
+
     def _send_request(self, request_data):
         self.requests_data.append(request_data)
 
