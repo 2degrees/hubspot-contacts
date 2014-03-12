@@ -27,10 +27,15 @@ Property = Record.create_type(
     'group_name',
     'field_widget',
     )
+
 BooleanProperty = Property.extend_type('BooleanProperty')
+
 DatetimeProperty = Property.extend_type('DatetimeProperty')
+
 EnumerationProperty = Property.extend_type('EnumerationProperty', 'options')
+
 NumberProperty = Property.extend_type('NumberProperty')
+
 StringProperty = Property.extend_type('StringProperty')
 
 
@@ -65,15 +70,12 @@ def get_all_properties(connection):
 
     properties = []
     for property_data in properties_data:
-        property_ = _build_property_specialization_from_data(property_data)
+        property_ = _build_property_from_data(property_data)
         properties.append(property_)
     return properties
 
 
-def _build_property_specialization_from_data(property_data):
-    property_generalization = \
-        _build_property_generalization_from_data(property_data)
-
+def _build_property_from_data(property_data):
     property_type_name = property_data['type']
     property_type = PROPERTY_TYPE_BY_NAME[property_type_name]
 
@@ -85,21 +87,13 @@ def _build_property_specialization_from_data(property_data):
     else:
         additional_field_values = {}
 
-    property_specialization = property_type.init_from_generalization(
-        property_generalization,
-        **additional_field_values
-        )
-
-    return property_specialization
-
-
-def _build_property_generalization_from_data(property_data):
-    property_ = Property(
+    property_ = property_type(
         property_data['name'],
         property_data['label'],
         property_data['description'],
         property_data['groupName'],
         property_data['fieldType'],
+        **additional_field_values
         )
     return property_
 
