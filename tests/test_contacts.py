@@ -15,8 +15,6 @@
 ##############################################################################
 
 from functools import partial
-
-from nose.tools import assert_false
 from nose.tools import assert_in
 from nose.tools import eq_
 
