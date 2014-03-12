@@ -18,7 +18,7 @@ from pyrecord import Record
 from voluptuous import Optional
 from voluptuous import Schema
 
-from hubspot.contacts.properties import _build_property_specialization_from_data
+from hubspot.contacts.properties import _build_property_from_data
 
 
 PropertyGroup = Record.create_type(
@@ -81,9 +81,7 @@ def _build_property_group_from_data(property_group_data):
 
     if 'properties' in property_group_data:
         properties_data = property_group_data['properties']
-        properties = [
-            _build_property_specialization_from_data(p) for p in properties_data
-            ]
+        properties = [_build_property_from_data(p) for p in properties_data]
         property_group.properties = properties
 
     return property_group
