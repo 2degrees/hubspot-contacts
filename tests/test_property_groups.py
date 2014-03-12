@@ -20,8 +20,11 @@ from nose.tools import assert_raises
 from nose.tools import eq_
 
 from hubspot.contacts.exc import HubspotClientError
+from hubspot.contacts.properties import DatetimeProperty
+from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
 from hubspot.contacts.property_groups import create_property_group
+from hubspot.contacts.property_groups import get_all_property_groups
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import RemoteMethod
@@ -104,3 +107,82 @@ def _replicate_create_property_group_error_response(request_data):
         "The Group named '{}' already exists.".format(property_group_name),
         get_uuid4_str(),
         )
+
+
+class TestGettingAllPropertyGroups(BaseMethodTestCase):
+
+    _REMOTE_METHOD = RemoteMethod('/groups', 'GET')
+
+    _PROPERTY_GROUP_DATA = [
+        {
+            'name': 'groupa',
+            'displayName': 'Group A',
+            'properties': [
+                {
+                    'name': 'lastmodifieddate',
+                    'type': 'datetime',
+                    'label': '',
+                    'description': '',
+                    'fieldType': '',
+                    'options': [],
+                    'groupName': 'groupa',
+                    },
+                ],
+            },
+        {
+            'name': 'groupb',
+            'displayName': 'Group B',
+            'properties': [
+                {
+                    'name': 'twitterhandle',
+                    'type': 'string',
+                    'label': '',
+                    'description': '',
+                    'fieldType': '',
+                    'options': [],
+                    'groupName': 'groupb',
+                    },
+                ],
+            },
+        ]
+
+    def test_no_property_groups(self):
+        connection = MockPortalConnection(lambda r: [])
+
+        retrieved_property_groups = get_all_property_groups(connection)
+        eq_(0, len(retrieved_property_groups))
+
+        self._assert_expected_remote_method_used(connection)
+
+    def test_property_groups_without_properties(self):
+        property_group_data = self._PROPERTY_GROUP_DATA[0].copy()
+        del property_group_data['properties']
+        connection = MockPortalConnection(lambda r: [property_group_data])
+
+        retrieved_property_groups = get_all_property_groups(connection)
+
+        expected_property_groups = [PropertyGroup('groupa', 'Group A')]
+        eq_(expected_property_groups, retrieved_property_groups)
+
+        self._assert_expected_remote_method_used(connection)
+
+    def test_multiple_property_groups(self):
+        connection = MockPortalConnection(lambda r: self._PROPERTY_GROUP_DATA)
+
+        retrieved_property_groups = get_all_property_groups(connection)
+
+        expected_property_groups = [
+            PropertyGroup(
+                'groupa',
+                'Group A',
+                [DatetimeProperty('lastmodifieddate', '', '', 'groupa', '')],
+                ),
+            PropertyGroup(
+                'groupb',
+                'Group B',
+                [StringProperty('twitterhandle', '', '', 'groupb', '' )],
+                ),
+            ]
+        eq_(expected_property_groups, retrieved_property_groups)
+
+        self._assert_expected_remote_method_used(connection)

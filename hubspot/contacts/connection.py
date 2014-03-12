@@ -24,16 +24,28 @@ from pkg_resources import get_distribution
 from pyrecord import Record
 from requests.auth import AuthBase
 from requests.sessions import Session
+from voluptuous import Schema
 
 from hubspot.contacts.exc import HubspotAuthenticationError
 from hubspot.contacts.exc import HubspotClientError
 from hubspot.contacts.exc import HubspotServerError
 from hubspot.contacts.exc import HubspotUnsupportedResponseError
+from hubspot.contacts.schema_validators import Constant
 
 
 _DISTRIBUTION_NAME = 'hubspot-contacts'
 _DISTRIBUTION_VERSION = get_distribution(_DISTRIBUTION_NAME).version
 _USER_AGENT = _DISTRIBUTION_NAME + '/' + _DISTRIBUTION_VERSION
+
+
+_HUBSPOT_ERROR_RESPONSE_SCHEMA = Schema(
+    {
+        'status': Constant('error'),
+        'message': unicode,
+        'requestId': unicode,
+        },
+    required=True,
+    )
 
 
 class PortalConnection(object):
@@ -118,7 +130,9 @@ class PortalConnection(object):
     @staticmethod
     def _require_successful_response(response):
         if 400 <= response.status_code < 500:
-            error_data = response.json()
+            response_data = response.json()
+            error_data = _HUBSPOT_ERROR_RESPONSE_SCHEMA(response_data)
+
             if response.status_code == 401:
                 exception_class = HubspotAuthenticationError
             else:
