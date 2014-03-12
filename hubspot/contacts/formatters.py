@@ -21,10 +21,10 @@ def format_contacts_data_for_saving(contacts):
 
 
 def _format_contact_data_for_saving(contact):
-    contact_data = [{
+    contact_data = {
         'email': contact.email_address,
         'properties': _format_contact_properties_for_saving(contact.properties),
-        }]
+        }
     return contact_data
 
 
