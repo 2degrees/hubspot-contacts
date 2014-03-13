@@ -42,7 +42,7 @@ class TestPropertyGroupCreation(BaseMethodTestCase):
         property_group = \
             PropertyGroup(self._PROPERTY_GROUP_NAME, 'Test Property Group')
 
-        request_data, response_data = \
+        request_data, created_property_group = \
             self._create_property_group(property_group)
 
         eq_(property_group.name, request_data.body_deserialization['name'])
@@ -51,18 +51,17 @@ class TestPropertyGroupCreation(BaseMethodTestCase):
             request_data.body_deserialization['displayName'],
             )
 
-        eq_(property_group.name, response_data['name'])
-        eq_(property_group.display_name, response_data['displayName'])
+        eq_(property_group, created_property_group)
 
     def test_display_name_not_specified(self):
         property_group = PropertyGroup(self._PROPERTY_GROUP_NAME)
 
-        request_data, response_data = \
+        request_data, created_property_group = \
             self._create_property_group(property_group)
 
         assert_not_in('displayName', request_data.body_deserialization)
 
-        eq_('', response_data['displayName'])
+        eq_('', created_property_group.display_name)
 
     def test_group_already_exists(self):
         connection = MockPortalConnection(
@@ -81,14 +80,15 @@ class TestPropertyGroupCreation(BaseMethodTestCase):
         connection = \
             MockPortalConnection(_replicate_create_property_group_response_data)
 
-        response_data = create_property_group(property_group, connection)
+        created_property_group = \
+            create_property_group(property_group, connection)
 
         self._assert_expected_remote_method_used(connection)
 
         eq_(1, len(connection.requests_data))
         request_data = connection.requests_data[0]
 
-        return request_data, response_data
+        return request_data, created_property_group
 
 
 def _replicate_create_property_group_response_data(request_data):
@@ -180,7 +180,7 @@ class TestGettingAllPropertyGroups(BaseMethodTestCase):
             PropertyGroup(
                 'groupb',
                 'Group B',
-                [StringProperty('twitterhandle', '', '', 'groupb', '' )],
+                [StringProperty('twitterhandle', '', '', 'groupb', '')],
                 ),
             ]
         eq_(expected_property_groups, retrieved_property_groups)

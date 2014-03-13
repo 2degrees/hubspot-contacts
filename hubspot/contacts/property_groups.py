@@ -61,8 +61,10 @@ def create_property_group(property_group, connection):
         '/groups/' + property_group.name,
         request_body_deserialization,
         )
-    response_data = _PROPERTY_GROUP_CREATION_SCHEMA(response_data)
-    return response_data
+    property_group_data = _PROPERTY_GROUP_CREATION_SCHEMA(response_data)
+    created_property_group = \
+        _build_property_group_from_data(property_group_data)
+    return created_property_group
 
 
 def get_all_property_groups(connection):
