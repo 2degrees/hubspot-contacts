@@ -18,6 +18,8 @@ from pyrecord import Record
 from voluptuous import Any
 from voluptuous import Schema
 
+from hubspot.contacts.generic_utils import remove_unset_values_from_dict
+
 
 Property = Record.create_type(
     'Property',
@@ -47,13 +49,25 @@ PROPERTY_TYPE_BY_NAME = {
     'string': StringProperty,
     }
 
+_PROPERTY_TYPE_NAME_BY_PROPERTY_TYPE = \
+    {type_: type_name  for type_name, type_ in PROPERTY_TYPE_BY_NAME.items()}
+
+
+_PROPERTY_RESPONSE_SCHEMA_DEFINITION = {
+    'name': unicode,
+    'type': Any(*PROPERTY_TYPE_BY_NAME.keys()),
+    'options': [],
+    }
+
+_CREATE_PROPERTY_RESPONSE_SCHEMA = Schema(
+    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
+    required=True,
+    extra=True,
+    )
+
 
 _GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION = [
-    {
-        'name': unicode,
-        'type': Any(*PROPERTY_TYPE_BY_NAME.keys()),
-        'options': [],
-        }
+    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
     ]
 
 
@@ -73,6 +87,58 @@ def get_all_properties(connection):
         property_ = _build_property_from_data(property_data)
         properties.append(property_)
     return properties
+
+
+def create_property(property_, connection):
+    property_type = get_property_type_name(property_)
+    property_options = get_raw_property_options(property_)
+    request_body_deserialization = {
+        'name': property_.name,
+        'label': property_.label,
+        'description': property_.description,
+        'groupName': property_.group_name,
+        'fieldType': property_.field_widget,
+        'type': property_type,
+        'options': property_options,
+        }
+    request_body_deserialization = \
+        remove_unset_values_from_dict(request_body_deserialization)
+
+    response_data = connection.send_put_request(
+        '/properties/' + property_.name,
+        request_body_deserialization,
+        )
+
+    property_data = _CREATE_PROPERTY_RESPONSE_SCHEMA(response_data)
+    created_property = _build_property_from_data(property_data)
+    return created_property
+
+
+def get_property_type_name(property_):
+    property_type = property_.__class__
+    property_type_name = _PROPERTY_TYPE_NAME_BY_PROPERTY_TYPE[property_type]
+    return property_type_name
+
+
+def get_raw_property_options(property_):
+    if isinstance(property_, BooleanProperty):
+        raw_options_data = [
+                {'label': 'True', 'value': 'true', 'displayOrder': 0},
+                {'label': 'False', 'value': 'false', 'displayOrder': 1},
+            ]
+    elif isinstance(property_, EnumerationProperty):
+        raw_options_data = []
+        for option_label, option_value in property_.options.items():
+            option_data = {
+                'label': option_label,
+                'value': option_value,
+                'displayOrder': 0,
+                }
+            raw_options_data.append(option_data)
+    else:
+        raw_options_data = []
+
+    return raw_options_data
 
 
 def _build_property_from_data(property_data):

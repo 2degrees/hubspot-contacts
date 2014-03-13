@@ -19,7 +19,7 @@ from voluptuous import All
 from voluptuous import Length
 from voluptuous import Schema
 
-from hubspot.contacts._generic_utils import ipaginate
+from hubspot.contacts.generic_utils import ipaginate
 from hubspot.contacts.formatters import format_contacts_data_for_saving
 from hubspot.contacts.schema_validators import AnyListItemValidates
 from hubspot.contacts.schema_validators import Constant

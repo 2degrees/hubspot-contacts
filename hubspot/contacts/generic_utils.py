@@ -30,3 +30,12 @@ def ipaginate(iterable, page_size):
 def _get_next_page_iterable_as_list(iterable, page_size):
     next_page_iterable = list(islice(iterable, page_size))
     return next_page_iterable
+
+
+def remove_unset_values_from_dict(dict_):
+    cleaned_dict = {}
+    for key, value in dict_.items():
+        if value or value in (0, False):
+            cleaned_dict[key] = value
+
+    return cleaned_dict
