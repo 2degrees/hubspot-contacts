@@ -17,6 +17,9 @@
 from tests.utils.generic import get_uuid4_str
 
 
+STUB_TIMESTAMP = 12345
+
+
 def format_data_from_all_contacts_retrieval(
     page_contacts,
     all_contacts,
@@ -42,6 +45,20 @@ def format_data_from_all_contacts_retrieval(
         'has-more': page_has_successors,
         'vid-offset': page_last_contact_vid,
         }
+
+
+def format_data_from_all_contacts_by_last_update_retrieval(
+    page_contacts,
+    all_contacts,
+    page_size,
+    ):
+    retrieval_data = format_data_from_all_contacts_retrieval(
+        page_contacts,
+        all_contacts,
+        page_size,
+        )
+    retrieval_data['time-offset'] = STUB_TIMESTAMP
+    return retrieval_data
 
 
 def _format_contacts_as_data_from_all_contacts_retrieval(all_contacts):

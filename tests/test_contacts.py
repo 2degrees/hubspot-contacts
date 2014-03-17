@@ -14,13 +14,18 @@
 #
 ##############################################################################
 
+from abc import abstractmethod
+from abc import abstractproperty
 from functools import partial
+
+from nose.tools import assert_dict_contains_subset
 from nose.tools import assert_in
 from nose.tools import eq_
 
 from hubspot.contacts import Contact
 from hubspot.contacts import _HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts import get_all_contacts
+from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
 from hubspot.contacts.formatters import format_contacts_data_for_saving
 
@@ -29,21 +34,22 @@ from tests.utils import RemoteMethod
 from tests.utils.connection import MockPortalConnection
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
-from tests.utils.method_response_formatters.all_contacts_retrieval import \
+from tests.utils.method_response_formatters.contacts_retrieval import \
     format_data_from_all_contacts_retrieval
+from tests.utils.method_response_formatters.contacts_retrieval import \
+    format_data_from_all_contacts_by_last_update_retrieval
+from tests.utils.method_response_formatters.contacts_retrieval import \
+    STUB_TIMESTAMP
 
 
 _HUBSPOT_DEFAULT_PAGE_SIZE = 100
 
 
-class TestGettingAllContacts(BaseMethodTestCase):
+class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/lists/all/contacts/all', 'GET')
+    _RETRIEVER = abstractproperty()
 
-    def _make_connection(self, contacts):
-        response_data_maker = \
-            partial(_replicate_get_all_contacts_response_data, contacts)
-        return MockPortalConnection(response_data_maker)
+    _RETRIEVED_DATA_FORMATTER = abstractproperty()
 
     def test_no_contacts(self):
         connection = self._make_connection([])
@@ -54,7 +60,7 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
         eq_(1, len(connection.requests_data))
 
-    def test_not_exceeding_default_pagination_size(self):
+    def test_not_exceeding_pagination_size(self):
         contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE - 1
         expected_contacts = make_contacts(contacts_count)
         connection = self._make_connection(expected_contacts)
@@ -65,20 +71,9 @@ class TestGettingAllContacts(BaseMethodTestCase):
 
         eq_(1, len(connection.requests_data))
 
-    def test_exceeding_default_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
-        expected_contacts = make_contacts(contacts_count)
-        connection = self._make_connection(expected_contacts)
-
-        self._assert_retrieved_contacts_match(expected_contacts, connection)
-
-        self._assert_expected_remote_method_used(connection)
-
-        eq_(2, len(connection.requests_data))
-
-        request_data = connection.requests_data[1]
-        eq_(2, len(request_data.query_string_args))
-        assert_in('vidOffset', request_data.query_string_args)
+    @abstractmethod
+    def test_exceeding_pagination_size(self):
+        pass
 
     def test_getting_existing_properties(self):
         expected_contacts = [
@@ -130,7 +125,7 @@ class TestGettingAllContacts(BaseMethodTestCase):
         expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
         connection = self._make_connection([expected_contacts])
 
-        retrieved_contacts = get_all_contacts(connection)
+        retrieved_contacts = self._RETRIEVER(connection)
         eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
 
     def test_contacts_without_sub_contacts(self):
@@ -138,7 +133,7 @@ class TestGettingAllContacts(BaseMethodTestCase):
         expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
         connection = self._make_connection([expected_contacts])
 
-        retrieved_contacts = get_all_contacts(connection)
+        retrieved_contacts = self._RETRIEVER(connection)
         eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
 
     def _assert_retrieved_contacts_match(
@@ -148,28 +143,61 @@ class TestGettingAllContacts(BaseMethodTestCase):
         *args,
         **kwargs
         ):
-        retrieved_contacts = get_all_contacts(connection, *args, **kwargs)
+        retrieved_contacts = self._RETRIEVER(connection, *args, **kwargs)
         eq_(list(expected_contacts), list(retrieved_contacts))
 
+    def _make_connection(self, contacts):
+        response_data_maker = \
+            partial(self._replicate_response_data, contacts)
+        return MockPortalConnection(response_data_maker)
 
-def _replicate_get_all_contacts_response_data(contacts, request_data):
-    query_string_args = request_data.query_string_args
-    last_contact_vid = query_string_args.get('vidOffset')
-    properties = query_string_args.get('property', [])
+    def _replicate_response_data(self, contacts, request_data):
+        query_string_args = request_data.query_string_args
+        last_contact_vid = query_string_args.get('vidOffset')
+        properties = query_string_args.get('property', [])
 
-    contacts_in_page = _get_contacts_in_page(
-        contacts,
-        last_contact_vid,
-        _HUBSPOT_DEFAULT_PAGE_SIZE,
-        )
-    contacts_in_page = \
-        _get_contacts_with_properties_filtered(contacts_in_page, properties)
-    contacts_in_page_data = format_data_from_all_contacts_retrieval(
-        contacts_in_page,
-        contacts,
-        _HUBSPOT_DEFAULT_PAGE_SIZE,
-        )
-    return contacts_in_page_data
+        contacts_in_page = _get_contacts_in_page(
+            contacts,
+            last_contact_vid,
+            _HUBSPOT_DEFAULT_PAGE_SIZE,
+            )
+        contacts_in_page = \
+            _get_contacts_with_properties_filtered(contacts_in_page, properties)
+        contacts_in_page_data = self._RETRIEVED_DATA_FORMATTER(
+            contacts_in_page,
+            contacts,
+            _HUBSPOT_DEFAULT_PAGE_SIZE,
+            )
+        return contacts_in_page_data
+
+
+class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
+
+    _REMOTE_METHOD = RemoteMethod('/lists/all/contacts/all', 'GET')
+
+    _RETRIEVER = staticmethod(get_all_contacts)
+
+    _RETRIEVED_DATA_FORMATTER = \
+        staticmethod(format_data_from_all_contacts_retrieval)
+
+    def test_exceeding_pagination_size(self):
+        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
+        expected_contacts = make_contacts(contacts_count)
+        connection = self._make_connection(expected_contacts)
+
+        self._assert_retrieved_contacts_match(expected_contacts, connection)
+
+        self._assert_expected_remote_method_used(connection)
+
+        eq_(2, len(connection.requests_data))
+
+        request2_data = connection.requests_data[1]
+        eq_(2, len(request2_data.query_string_args))
+
+        assert_in('vidOffset', request2_data.query_string_args)
+        page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
+        expect_vid_offset = page1_last_contact.vid
+        eq_(expect_vid_offset, request2_data.query_string_args['vidOffset'])
 
 
 def _get_contacts_in_page(contacts, last_contact_vid, page_size):
@@ -198,6 +226,41 @@ def _get_contacts_with_properties_filtered(contacts, properties):
             append(contact_with_properties_filtered)
 
     return contacts_with_properties_filtered
+
+
+class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
+
+    _REMOTE_METHOD = \
+        RemoteMethod('/lists/recently_updated/contacts/recent', 'GET')
+
+    _RETRIEVER = staticmethod(get_all_contacts_by_last_update)
+
+    _RETRIEVED_DATA_FORMATTER = \
+        staticmethod(format_data_from_all_contacts_by_last_update_retrieval)
+
+    def test_exceeding_pagination_size(self):
+        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
+        expected_contacts = make_contacts(contacts_count)
+        connection = self._make_connection(expected_contacts)
+
+        self._assert_retrieved_contacts_match(expected_contacts, connection)
+
+        self._assert_expected_remote_method_used(connection)
+
+        eq_(2, len(connection.requests_data))
+
+        request2_data = connection.requests_data[1]
+        eq_(3, len(request2_data.query_string_args))
+
+        page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
+        expected_query_string_args = {
+            'vidOffset': page1_last_contact.vid,
+            'timeOffset': STUB_TIMESTAMP,
+            }
+        assert_dict_contains_subset(
+            expected_query_string_args,
+            request2_data.query_string_args,
+            )
 
 
 class TestSavingContacts(BaseMethodTestCase):

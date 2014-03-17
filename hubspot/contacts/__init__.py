@@ -17,6 +17,7 @@
 from pyrecord import Record
 from voluptuous import All
 from voluptuous import Length
+from voluptuous import Optional
 from voluptuous import Schema
 
 from hubspot.contacts.generic_utils import ipaginate
@@ -57,7 +58,7 @@ _CANONICAL_IDENTITY_PROFILE_SCHEMA = {
 
 _IS_PROPERTY_VALUE = Schema({'value': unicode}, required=True, extra=True)
 
-_GET_ALL_CONTACTS_SCHEMA = Schema(
+_CONTACTS_PAGE_SCHEMA = Schema(
     {
         'contacts': [{
             'vid': int,
@@ -73,6 +74,7 @@ _GET_ALL_CONTACTS_SCHEMA = Schema(
             }],
         'has-more': bool,
         'vid-offset': int,
+        Optional('time-offset'): int,
         },
     required=True,
     extra=True,
@@ -80,35 +82,54 @@ _GET_ALL_CONTACTS_SCHEMA = Schema(
 
 
 def get_all_contacts(connection, properties=()):
-    all_contacts_data = _get_all_contacts_data(connection, properties)
-    for contact_data in all_contacts_data:
-        contact = _build_contact_from_data(contact_data)
-        yield contact
+    all_contacts = _get_contacts_from_all_pages(
+        '/lists/all/contacts/all',
+        connection,
+        properties,
+        )
+    return all_contacts
 
 
-def _get_all_contacts_data(connection, properties):
+def get_all_contacts_by_last_update(connection, properties=()):
+    all_contacts_by_last_update = _get_contacts_from_all_pages(
+        '/lists/recently_updated/contacts/recent',
+        connection,
+        properties,
+        )
+    return all_contacts_by_last_update
+
+
+def _get_contacts_from_all_pages(path_info, connection, properties):
+    contacts_data_by_page = \
+        _get_contacts_data_by_page(path_info, connection, properties)
+    for contacts_data in contacts_data_by_page:
+        for contact_data in contacts_data:
+            contact = _build_contact_from_data(contact_data)
+            yield contact
+
+
+def _get_contacts_data_by_page(path_info, connection, properties):
     base_query_string_args = {'count': _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
     if properties:
         base_query_string_args['property'] = properties
-
     has_more_pages = True
     last_contact_vid = None
+    last_contact_addition_timestamp = None
     while has_more_pages:
         query_string_args = base_query_string_args.copy()
         if last_contact_vid:
             query_string_args['vidOffset'] = last_contact_vid
+        if last_contact_addition_timestamp:
+            query_string_args['timeOffset'] = last_contact_addition_timestamp
 
-        contacts_data = connection.send_get_request(
-            '/lists/all/contacts/all',
-            query_string_args,
-            )
-        contacts_data = _GET_ALL_CONTACTS_SCHEMA(contacts_data)
+        contacts_data = \
+            connection.send_get_request(path_info, query_string_args)
+        contacts_data = _CONTACTS_PAGE_SCHEMA(contacts_data)
 
-        for contact_data in contacts_data['contacts']:
-            yield contact_data
+        yield contacts_data['contacts']
 
-            last_contact_vid = contact_data['vid']
-
+        last_contact_vid = contacts_data['vid-offset']
+        last_contact_addition_timestamp = contacts_data.get('time-offset')
         has_more_pages = contacts_data['has-more']
 
 
