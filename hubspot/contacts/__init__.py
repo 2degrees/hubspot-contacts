@@ -15,20 +15,14 @@
 ##############################################################################
 
 from pyrecord import Record
-from voluptuous import All
-from voluptuous import Length
-from voluptuous import Optional
-from voluptuous import Schema
 
+from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
 from hubspot.contacts.generic_utils import ipaginate
 from hubspot.contacts.formatters import format_contacts_data_for_saving
-from hubspot.contacts.schema_validators import AnyListItemValidates
-from hubspot.contacts.schema_validators import Constant
-from hubspot.contacts.schema_validators import DynamicDictionary
-from hubspot.contacts.schema_validators import GetDictValue
 
 
 _HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
+
 
 _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
 
@@ -39,45 +33,6 @@ Contact = Record.create_type(
     'email_address',
     'properties',
     'sub_contacts',
-    )
-
-
-_CANONICAL_IDENTITY_PROFILE_SCHEMA = {
-    'vid': int,
-    'identities': All(
-        [],
-        AnyListItemValidates(
-            Schema(
-                {'type': Constant(u'EMAIL'), 'value': unicode},
-                required=True,
-                extra=True,
-                ),
-            ),
-        ),
-    }
-
-_IS_PROPERTY_VALUE = Schema({'value': unicode}, required=True, extra=True)
-
-_CONTACTS_PAGE_SCHEMA = Schema(
-    {
-        'contacts': [{
-            'vid': int,
-            'properties': DynamicDictionary(
-                unicode,
-                All(_IS_PROPERTY_VALUE, GetDictValue('value')),
-                ),
-            'identity-profiles': All(
-                [{'vid': int, 'identities': []}],
-                Length(min=1),
-                AnyListItemValidates(_CANONICAL_IDENTITY_PROFILE_SCHEMA),
-                ),
-            }],
-        'has-more': bool,
-        'vid-offset': int,
-        Optional('time-offset'): int,
-        },
-    required=True,
-    extra=True,
     )
 
 
@@ -124,7 +79,7 @@ def _get_contacts_data_by_page(path_info, connection, properties):
 
         contacts_data = \
             connection.send_get_request(path_info, query_string_args)
-        contacts_data = _CONTACTS_PAGE_SCHEMA(contacts_data)
+        contacts_data = CONTACTS_PAGE_SCHEMA(contacts_data)
 
         yield contacts_data['contacts']
 

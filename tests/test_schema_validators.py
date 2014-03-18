@@ -19,10 +19,10 @@ from nose.tools import eq_
 from voluptuous import Invalid
 from voluptuous import Schema
 
-from hubspot.contacts.schema_validators import AnyListItemValidates
-from hubspot.contacts.schema_validators import Constant
-from hubspot.contacts.schema_validators import DynamicDictionary
-from hubspot.contacts.schema_validators import GetDictValue
+from hubspot.contacts._schemas._validators import AnyListItemValidates
+from hubspot.contacts._schemas._validators import Constant
+from hubspot.contacts._schemas._validators import DynamicDictionary
+from hubspot.contacts._schemas._validators import GetDictValue
 
 
 class TestGetttingDictValues(object):

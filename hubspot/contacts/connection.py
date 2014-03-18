@@ -30,7 +30,7 @@ from hubspot.contacts.exc import HubspotAuthenticationError
 from hubspot.contacts.exc import HubspotClientError
 from hubspot.contacts.exc import HubspotServerError
 from hubspot.contacts.exc import HubspotUnsupportedResponseError
-from hubspot.contacts.schema_validators import Constant
+from hubspot.contacts._schemas._validators import Constant
 
 
 _DISTRIBUTION_NAME = 'hubspot-contacts'
