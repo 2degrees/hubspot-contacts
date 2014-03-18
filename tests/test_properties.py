@@ -31,6 +31,7 @@ from hubspot.contacts.properties import NumberProperty
 from hubspot.contacts.properties import Property
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.properties import create_property
+from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.properties import get_property_type_name
 from hubspot.contacts.properties import get_raw_property_options
@@ -217,6 +218,20 @@ class TestCreatingProperty(BaseMethodTestCase):
         attribute_in_error_msg = getattr(property_, attribute_name_in_error_msg)
         assert_in(attribute_in_error_msg, str(exception))
 
+
+class TestPropertyDeletion(BaseMethodTestCase):
+
+    _PROPERTY_NAME = 'test'
+
+    _REMOTE_METHOD = RemoteMethod('/properties/' + _PROPERTY_NAME, 'DELETE')
+
+    def test_existing_mutable_property(self):
+        connection = MockPortalConnection()
+        delete_property(self._PROPERTY_NAME, connection)
+
+        self._assert_expected_remote_method_used(connection)
+
+        eq_(1, len(connection.requests_data))
 
 
 def _replicate_create_property_duplicate_error_response(request_data):

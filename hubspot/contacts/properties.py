@@ -114,6 +114,10 @@ def create_property(property_, connection):
     return created_property
 
 
+def delete_property(property_name, connection):
+    connection.send_delete_request('/properties/' + property_name)
+
+
 def get_property_type_name(property_):
     property_type = property_.__class__
     property_type_name = _PROPERTY_TYPE_NAME_BY_PROPERTY_TYPE[property_type]

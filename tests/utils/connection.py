@@ -64,6 +64,10 @@ class MockPortalConnection(object):
             )
         return self._send_request(request_data)
 
+    def send_delete_request(self, path_info):
+        request_data = MockRequestData('DELETE', path_info)
+        return self._send_request(request_data)
+
     def _send_request(self, request_data):
         self.requests_data.append(request_data)
 
