@@ -15,6 +15,7 @@
 ##############################################################################
 
 from voluptuous import All
+from voluptuous import Any
 from voluptuous import Length
 from voluptuous import Optional
 from voluptuous import Schema
@@ -25,19 +26,16 @@ from hubspot.contacts._schemas._validators import DynamicDictionary
 from hubspot.contacts._schemas._validators import GetDictValue
 
 
-_CANONICAL_IDENTITY_PROFILE_SCHEMA = {
-    'vid': int,
-    'identities': All(
-        [],
-        AnyListItemValidates(
-            Schema(
-                {'type': Constant(u'EMAIL'), 'value': unicode},
-                required=True,
-                extra=True,
-                ),
+_CANONICAL_IDENTITY_PROFILE_SCHEMA = All(
+    [],
+    AnyListItemValidates(
+        Schema(
+            {'type': Constant(u'EMAIL'), 'value': unicode},
+            required=True,
+            extra=True,
             ),
         ),
-    }
+    )
 
 _IS_PROPERTY_VALUE = Schema({'value': unicode}, required=True, extra=True)
 
@@ -50,9 +48,11 @@ CONTACTS_PAGE_SCHEMA = Schema(
                 All(_IS_PROPERTY_VALUE, GetDictValue('value')),
                 ),
             'identity-profiles': All(
-                [{'vid': int, 'identities': []}],
+                [{
+                    'vid': int,
+                    'identities': Any([], _CANONICAL_IDENTITY_PROFILE_SCHEMA),
+                    }],
                 Length(min=1),
-                AnyListItemValidates(_CANONICAL_IDENTITY_PROFILE_SCHEMA),
                 ),
             }],
         'has-more': bool,
