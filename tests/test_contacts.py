@@ -28,10 +28,10 @@ from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
 from hubspot.contacts.formatters import format_contacts_data_for_saving
+from hubspot.test_utils import MockPortalConnection
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import RemoteMethod
-from tests.utils.connection import MockPortalConnection
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
 from tests.utils.method_response_formatters.contacts_retrieval import \
