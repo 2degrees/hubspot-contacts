@@ -25,10 +25,10 @@ from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
 from hubspot.contacts.property_groups import create_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
+from hubspot.test_utils import MockPortalConnection
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import RemoteMethod
-from tests.utils.connection import MockPortalConnection
 from tests.utils.generic import get_uuid4_str
 
 

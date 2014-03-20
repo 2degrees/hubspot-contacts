@@ -35,10 +35,10 @@ from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.properties import get_property_type_name
 from hubspot.contacts.properties import get_raw_property_options
+from hubspot.test_utils import MockPortalConnection
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import RemoteMethod
-from tests.utils.connection import MockPortalConnection
 from tests.utils.generic import get_uuid4_str
 
 
