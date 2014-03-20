@@ -14,6 +14,9 @@
 #
 ##############################################################################
 
+from httplib import NO_CONTENT as HTTP_STATUS_NO_CONTENT
+from httplib import OK as HTTP_STATUS_OK
+from httplib import UNAUTHORIZED as HTTP_STATUS_UNAUTHORIZED
 from json import dumps as json_serialize
 from urllib import urlencode
 from urlparse import parse_qs
@@ -22,15 +25,16 @@ from urlparse import urlunsplit
 
 from pkg_resources import get_distribution
 from pyrecord import Record
+from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 from requests.sessions import Session
 from voluptuous import Schema
 
+from hubspot.contacts._schemas._validators import Constant
 from hubspot.contacts.exc import HubspotAuthenticationError
 from hubspot.contacts.exc import HubspotClientError
 from hubspot.contacts.exc import HubspotServerError
 from hubspot.contacts.exc import HubspotUnsupportedResponseError
-from hubspot.contacts._schemas._validators import Constant
 
 
 _DISTRIBUTION_NAME = 'hubspot-contacts'
@@ -48,6 +52,9 @@ _HUBSPOT_ERROR_RESPONSE_SCHEMA = Schema(
     )
 
 
+_HTTP_CONNECTION_MAX_RETRIES = 3
+
+
 class PortalConnection(object):
 
     _API_URL = 'https://api.hubapi.com/contacts/v1'
@@ -61,6 +68,9 @@ class PortalConnection(object):
 
         self._session = Session()
         self._session.headers['User-Agent'] = _USER_AGENT
+
+        http_adapter = HTTPAdapter(max_retries=_HTTP_CONNECTION_MAX_RETRIES)
+        self._session.mount('', http_adapter)
 
     def send_get_request(self, path_info, query_string_args=None):
         return self._send_request('GET', path_info, query_string_args)
@@ -116,9 +126,9 @@ class PortalConnection(object):
         cls._require_successful_response(response)
         cls._require_json_response(response)
 
-        if response.status_code == 200:
+        if response.status_code == HTTP_STATUS_OK:
             response_body_deserialization = response.json()
-        elif response.status_code == 204:
+        elif response.status_code == HTTP_STATUS_NO_CONTENT:
             response_body_deserialization = None
         else:
             exception_message = \
@@ -133,7 +143,7 @@ class PortalConnection(object):
             response_data = response.json()
             error_data = _HUBSPOT_ERROR_RESPONSE_SCHEMA(response_data)
 
-            if response.status_code == 401:
+            if response.status_code == HTTP_STATUS_UNAUTHORIZED:
                 exception_class = HubspotAuthenticationError
             else:
                 exception_class = HubspotClientError
