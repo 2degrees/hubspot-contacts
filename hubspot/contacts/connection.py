@@ -152,9 +152,7 @@ class PortalConnection(object):
                 error_data['requestId'],
                 )
         elif 500 <= response.status_code < 600:
-            raise HubspotServerError(
-                '{} {}'.format(response.status_code, response.reason),
-                )
+            raise HubspotServerError(response.reason, response.status_code)
 
     @staticmethod
     def _require_json_response(response):

@@ -119,7 +119,7 @@ class TestPortalConnection(object):
         """
         Any extra query string argument co-exists with authentication-related
         arguments.
-        
+
         """
         connection = _MockPortalConnection()
 
@@ -158,7 +158,7 @@ class TestPortalConnection(object):
         An exception is raised when the response status code is unsupported.
 
         """
-        unsupported_response_maker = _ResponseMaker(304, None)
+        unsupported_response_maker = _ResponseMaker(304)
         connection = _MockPortalConnection(unsupported_response_maker)
 
         with assert_raises(HubspotUnsupportedResponseError) as context_manager:
@@ -208,13 +208,13 @@ class TestPortalConnection(object):
 class TestErrorResponses(object):
 
     def test_server_error_response(self):
-        response_maker = _ResponseMaker(500, None)
+        response_maker = _ResponseMaker(500)
         connection = _MockPortalConnection(response_maker)
         with assert_raises(HubspotServerError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
 
         exception = context_manager.exception
-        assert_in('500', str(exception))
+        eq_(500, exception.http_status_code)
 
     def test_client_error_response(self):
         request_id = get_uuid4_str()
@@ -335,7 +335,7 @@ class _ResponseMaker(object):
     def __init__(
         self,
         status_code,
-        body_deserialization,
+        body_deserialization=None,
         content_type='application/json',
         ):
         super(_ResponseMaker, self).__init__()
@@ -354,13 +354,13 @@ class _ResponseMaker(object):
                 '{}; charset=UTF-8'.format(self._content_type)
             response.headers['Content-Type'] = content_type_header_value
 
-        if self._status_code != 204:
+        if self._status_code != 204 and self._body_deserialization:
             response._content = json_serialize(self._body_deserialization)
 
         return response
 
 
-_EMPTY_RESPONSE_MAKER = _ResponseMaker(204, None)
+_EMPTY_RESPONSE_MAKER = _ResponseMaker(204)
 
 
 def _get_path_info_from_contacts_api_url(contacts_api_url):
