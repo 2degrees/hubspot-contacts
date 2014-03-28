@@ -150,3 +150,32 @@ class TestMockPortalConnection(object):
             [expected_remote_method_invocation],
             connection.remote_method_invocations,
             )
+
+    def test_remote_method_invocation_filtering(self):
+        connection = MockPortalConnection()
+
+        connection.send_post_request(_STUB_PATH_INFO, None)
+        connection.send_get_request(_STUB_PATH_INFO)
+        connection.send_post_request(_STUB_PATH_INFO, _STUB_RESPONSE_DATA)
+
+        remote_method1 = RemoteMethod(_STUB_PATH_INFO, 'POST')
+        filtered_remote_method1_invocations = \
+            connection.get_invocations_for_remote_method(remote_method1)
+        expected_filtered_remote_method1_invocations = [
+            RemoteMethodInvocation(remote_method1),
+            RemoteMethodInvocation(remote_method1, None, _STUB_RESPONSE_DATA),
+            ]
+        eq_(
+            filtered_remote_method1_invocations,
+            expected_filtered_remote_method1_invocations,
+            )
+
+        remote_method2 = RemoteMethod(_STUB_PATH_INFO, 'GET')
+        filtered_remote_method2_invocations = \
+            connection.get_invocations_for_remote_method(remote_method2)
+        expected_filtered_remote_method2_invocations = \
+            [RemoteMethodInvocation(remote_method2)]
+        eq_(
+            expected_filtered_remote_method2_invocations,
+            filtered_remote_method2_invocations,
+            )

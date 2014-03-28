@@ -40,8 +40,9 @@ class MockPortalConnection(object):
     def __init__(self, response_data_maker_by_remote_method=None):
         super(MockPortalConnection, self).__init__()
 
-        self.response_data_maker_by_remote_method = \
+        self._response_data_maker_by_remote_method = \
             response_data_maker_by_remote_method or {}
+
         self.remote_method_invocations = []
 
     def send_get_request(self, path_info, query_string_args=None):
@@ -79,11 +80,18 @@ class MockPortalConnection(object):
             )
         self.remote_method_invocations.append(remote_method_invocation)
 
-        if self.response_data_maker_by_remote_method:
+        if self._response_data_maker_by_remote_method:
             response_data_maker = \
-                self.response_data_maker_by_remote_method[remote_method]
+                self._response_data_maker_by_remote_method[remote_method]
             response_data = \
                 response_data_maker(query_string_args, body_deserialization)
         else:
             response_data = None
         return convert_object_strings_to_unicode(response_data)
+
+    def get_invocations_for_remote_method(self, remote_method):
+        filtered_remote_method_invocations = [
+            invocation for invocation in self.remote_method_invocations if
+                invocation.remote_method == remote_method
+            ]
+        return filtered_remote_method_invocations
