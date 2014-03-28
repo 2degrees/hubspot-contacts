@@ -27,7 +27,7 @@ PropertyGroup = Record.create_type(
     'display_name',
     'properties',
     display_name=None,
-    properties=None,
+    properties=(),
     )
 
 
