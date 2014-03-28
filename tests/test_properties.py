@@ -19,7 +19,6 @@ from functools import partial
 from nose.tools import assert_in
 from nose.tools import assert_raises
 from nose.tools import eq_
-from nose.tools import ok_
 from voluptuous import MultipleInvalid
 
 from hubspot.contacts.exc import HubspotClientError
@@ -36,9 +35,10 @@ from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.properties import get_property_type_name
 from hubspot.contacts.properties import get_raw_property_options
 from hubspot.test_utils import MockPortalConnection
+from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
-from tests.utils import RemoteMethod
+from tests.utils import ConstantResponseDataMaker
 from tests.utils.generic import get_uuid4_str
 
 
@@ -56,8 +56,9 @@ class TestGettingAllProperties(BaseMethodTestCase):
     _REMOTE_METHOD = RemoteMethod('/properties', 'GET')
 
     def test_no_properties(self):
-        response_maker = lambda request_data: []
-        connection = MockPortalConnection(response_maker)
+        response_data_maker_by_remote_method = \
+            {self._REMOTE_METHOD: ConstantResponseDataMaker([])}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         retrieved_properties = get_all_properties(connection)
         self._assert_expected_remote_method_used(connection)
@@ -69,11 +70,13 @@ class TestGettingAllProperties(BaseMethodTestCase):
             BooleanProperty.init_from_generalization(_STUB_PROPERTY),
             DatetimeProperty.init_from_generalization(_STUB_PROPERTY),
             ]
-        response_maker = partial(
+        response_data_maker = partial(
             _replicate_get_all_properties_response_data,
             properties,
             )
-        connection = MockPortalConnection(response_maker)
+        response_data_maker_by_remote_method = \
+            {self._REMOTE_METHOD: response_data_maker}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         retrieved_properties = get_all_properties(connection)
 
@@ -81,8 +84,7 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
         eq_(properties, retrieved_properties)
 
-
-class TestPropertyTypes(object):
+    #{ Property specializations
 
     def test_boolean(self):
         boolean_property = \
@@ -112,9 +114,11 @@ class TestPropertyTypes(object):
         self._check_property_retrieval(string_property)
 
     def _check_property_retrieval(self, property_):
-        response_maker = \
+        response_data_maker = \
             partial(_replicate_get_all_properties_response_data, [property_])
-        connection = MockPortalConnection(response_maker)
+        response_data_maker_by_remote_method = \
+            {self._REMOTE_METHOD: response_data_maker}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         retrieved_properties = get_all_properties(connection)
 
@@ -122,9 +126,11 @@ class TestPropertyTypes(object):
         eq_(property_, retrieved_properties[0])
 
     def test_unsupported_type(self):
-        connection = MockPortalConnection(
-            _replicate_get_all_properties_invalid_response_data,
-            )
+        response_data_maker_by_remote_method = {
+            self._REMOTE_METHOD:
+                _replicate_get_all_properties_invalid_response_data,
+            }
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         assert_raises(
             MultipleInvalid,
@@ -132,51 +138,33 @@ class TestPropertyTypes(object):
             connection,
             )
 
+    #}
+
 
 class TestCreatingProperty(BaseMethodTestCase):
 
-    _PROPERTY_NAME = 'test'
-
-    _REMOTE_METHOD = RemoteMethod('/properties/' + _PROPERTY_NAME, 'PUT')
+    _REMOTE_METHOD = RemoteMethod('/properties/' + _STUB_PROPERTY.name, 'PUT')
 
     def test_all_fields_set(self):
         property_ = NumberProperty.init_from_generalization(_STUB_PROPERTY)
-        field_values = property_.get_field_values()
-        ok_(all(field_values.values()))
 
         self._check_create_property(property_, property_)
 
     def test_enum_options(self):
-        property_ = EnumerationProperty(
-            'trafficlight',
-            'Traffic Light',
-            'The traffic light',
-            'traffic',
-            'choice',
-            {'Red': 'red', 'Yellow': 'yellow', 'Green': 'green'},
+        property_ = EnumerationProperty.init_from_generalization(
+            _STUB_PROPERTY,
+            options={'Yes': 'yes', 'No': 'no', 'Unknown': 'unknown'},
             )
-
-        field_values = property_.get_field_values()
-        ok_(all(field_values.values()))
 
         self._check_create_property(property_, property_)
 
     def test_some_fields_unset(self):
-        property_ = StringProperty(
-            'is_polite',
-            None,
-            None,
-            'social_interaction',
-            None,
-            )
+        property_ = StringProperty.init_from_generalization(_STUB_PROPERTY)
+        property_.description = None
 
-        expected_created_property = StringProperty(
-            property_.name,
-            '',
-            '',
-            property_.group_name,
-            '',
-            )
+        expected_created_property = property_.copy()
+        expected_created_property.description = ''
+
         self._check_create_property(property_, expected_created_property)
 
     def test_already_exists(self):
@@ -191,25 +179,36 @@ class TestCreatingProperty(BaseMethodTestCase):
             'group_name',
             )
 
-    @staticmethod
-    def _check_create_property(property_, expected_property):
+    @classmethod
+    def _check_create_property(cls, property_, expected_property):
         property_data = _get_data_from_property(property_)
-        response_maker = lambda request_data: property_data
-        connection = MockPortalConnection(response_maker)
+        response_data_maker_by_remote_method = \
+            {cls._REMOTE_METHOD: ConstantResponseDataMaker(property_data)}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
         created_property = create_property(property_, connection)
 
-        eq_(1, len(connection.requests_data))
-        request_data = connection.requests_data[0]
+        eq_(1, len(connection.remote_method_invocations))
+        remote_method_invocation = connection.remote_method_invocations[0]
 
-        expected_request_data = remove_unset_values_from_dict(property_data)
-        eq_(expected_request_data, request_data.body_deserialization)
+        expected_remote_method_invocation = \
+            remove_unset_values_from_dict(property_data)
+        eq_(
+            expected_remote_method_invocation,
+            remote_method_invocation.body_deserialization,
+            )
 
         eq_(expected_property, created_property)
 
-    @staticmethod
-    def _assert_error_response(error_generator, attribute_name_in_error_msg):
+    @classmethod
+    def _assert_error_response(
+        cls,
+        error_generator,
+        attribute_name_in_error_msg,
+        ):
         property_ = StringProperty.init_from_generalization(_STUB_PROPERTY)
-        connection = MockPortalConnection(error_generator)
+        response_data_maker_by_remote_method = \
+            {cls._REMOTE_METHOD: error_generator}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         with assert_raises(HubspotClientError) as context_manager:
             create_property(property_, connection)
@@ -231,26 +230,36 @@ class TestPropertyDeletion(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(1, len(connection.requests_data))
+        eq_(1, len(connection.remote_method_invocations))
 
 
-def _replicate_create_property_duplicate_error_response(request_data):
-    property_name = request_data.body_deserialization['name']
+def _replicate_create_property_duplicate_error_response(
+    query_string_args,
+    body_deserialization,
+    ):
+    property_name = body_deserialization['name']
     raise HubspotClientError(
         "The Property named '{}' already exists.".format(property_name),
         get_uuid4_str(),
         )
 
 
-def _replicate_create_property_invalid_group_error_response(request_data):
-    property_group_name = request_data.body_deserialization['groupName']
+def _replicate_create_property_invalid_group_error_response(
+    query_string_args,
+    body_deserialization,
+    ):
+    property_group_name = body_deserialization['groupName']
     raise HubspotClientError(
         "group '{}' does not exist.".format(property_group_name),
         get_uuid4_str(),
         )
 
 
-def _replicate_get_all_properties_response_data(properties, request_data):
+def _replicate_get_all_properties_response_data(
+    properties,
+    query_string_args,
+    body_deserialization,
+    ):
     properties_data = [_get_data_from_property(p) for p in properties]
     return properties_data
 
@@ -270,7 +279,10 @@ def _get_data_from_property(property_):
     return property_data
 
 
-def _replicate_get_all_properties_invalid_response_data(request_data):
+def _replicate_get_all_properties_invalid_response_data(
+    remote_method,
+    body_deserialization,
+    ):
     properties = [{
         'name': 'name',
         'label': 'label',

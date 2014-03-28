@@ -14,16 +14,20 @@
 #
 ##############################################################################
 
-from nose.tools import eq_
+from collections import namedtuple
+
 from pyrecord import Record
 
 from tests.utils.generic import convert_object_strings_to_unicode
 
 
-MockRequestData = Record.create_type(
-    'MockRequestData',
-    'method',
-    'path_info',
+# namedtuple is used instead of a record because we need immutable instances
+RemoteMethod = namedtuple('RemoteMethod', ['path_info', 'http_method'])
+
+
+RemoteMethodInvocation = Record.create_type(
+    'RemoteMethodInvocation',
+    'remote_method',
     'query_string_args',
     'body_deserialization',
     query_string_args=None,
@@ -33,54 +37,53 @@ MockRequestData = Record.create_type(
 
 class MockPortalConnection(object):
 
-    def __init__(self, response_data_maker=None):
+    def __init__(self, response_data_maker_by_remote_method=None):
         super(MockPortalConnection, self).__init__()
 
-        self._response_data_maker = response_data_maker
-        self.requests_data = []
+        self.response_data_maker_by_remote_method = \
+            response_data_maker_by_remote_method or {}
+        self.remote_method_invocations = []
 
     def send_get_request(self, path_info, query_string_args=None):
-        query_string_args = query_string_args or {}
-        request_data = MockRequestData(
-            'GET',
-            path_info,
-            query_string_args,
-            )
-        return self._send_request(request_data)
+        remote_method = RemoteMethod(path_info, 'GET')
+        return self._call_remote_method(remote_method, query_string_args)
 
     def send_post_request(self, path_info, body_deserialization):
-        request_data = MockRequestData(
-            'POST',
-            path_info,
+        remote_method = RemoteMethod(path_info, 'POST')
+        return self._call_remote_method(
+            remote_method,
             body_deserialization=body_deserialization,
             )
-        return self._send_request(request_data)
 
     def send_put_request(self, path_info, body_deserialization):
-        request_data = MockRequestData(
-            'PUT',
-            path_info,
+        remote_method = RemoteMethod(path_info, 'PUT')
+        return self._call_remote_method(
+            remote_method,
             body_deserialization=body_deserialization,
             )
-        return self._send_request(request_data)
 
     def send_delete_request(self, path_info):
-        request_data = MockRequestData('DELETE', path_info)
-        return self._send_request(request_data)
+        remote_method = RemoteMethod(path_info, 'DELETE')
+        return self._call_remote_method(remote_method)
 
-    def _send_request(self, request_data):
-        self.requests_data.append(request_data)
+    def _call_remote_method(
+        self,
+        remote_method,
+        query_string_args=None,
+        body_deserialization=None,
+        ):
+        remote_method_invocation = RemoteMethodInvocation(
+            remote_method,
+            query_string_args,
+            body_deserialization,
+            )
+        self.remote_method_invocations.append(remote_method_invocation)
 
-        if self._response_data_maker:
-            response_data = self._response_data_maker(request_data)
+        if self.response_data_maker_by_remote_method:
+            response_data_maker = \
+                self.response_data_maker_by_remote_method[remote_method]
+            response_data = \
+                response_data_maker(query_string_args, body_deserialization)
         else:
             response_data = None
         return convert_object_strings_to_unicode(response_data)
-
-    def assert_requested_path_infos_equal(self, expected_path_info):
-        for request_data in self.requests_data:
-            eq_(expected_path_info, request_data.path_info)
-
-    def assert_request_methods_equal(self, expected_request_method):
-        for request_data in self.requests_data:
-            eq_(expected_request_method, request_data.method)

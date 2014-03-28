@@ -13,13 +13,11 @@
 # INFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
+
 from abc import ABCMeta
 from abc import abstractproperty
 
-from pyrecord import Record
-
-
-RemoteMethod = Record.create_type('RemoteMethod', 'path_info', 'http_method')
+from nose.tools import eq_
 
 
 class BaseMethodTestCase(object):
@@ -30,7 +28,15 @@ class BaseMethodTestCase(object):
 
     @classmethod
     def _assert_expected_remote_method_used(cls, connection):
-        connection.assert_requested_path_infos_equal(
-            cls._REMOTE_METHOD.path_info,
-            )
-        connection.assert_request_methods_equal(cls._REMOTE_METHOD.http_method)
+        for remote_method_invocation in connection.remote_method_invocations:
+            eq_(cls._REMOTE_METHOD, remote_method_invocation.remote_method)
+
+
+class ConstantResponseDataMaker(object):
+
+    def __init__(self, response_data):
+        super(ConstantResponseDataMaker, self).__init__()
+        self.response_data = response_data
+
+    def __call__(self, remote_method, body_deserialization):
+        return self.response_data

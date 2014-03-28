@@ -29,9 +29,9 @@ from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
 from hubspot.contacts.formatters import format_contacts_data_for_saving
 from hubspot.test_utils import MockPortalConnection
+from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
-from tests.utils import RemoteMethod
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
 from tests.utils.method_response_formatters.contacts_retrieval import \
@@ -58,7 +58,7 @@ class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(1, len(connection.requests_data))
+        eq_(1, len(connection.remote_method_invocations))
 
     def test_not_exceeding_pagination_size(self):
         contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE - 1
@@ -69,7 +69,7 @@ class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(1, len(connection.requests_data))
+        eq_(1, len(connection.remote_method_invocations))
 
     @abstractmethod
     def test_exceeding_pagination_size(self):
@@ -103,11 +103,11 @@ class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(1, len(connection.requests_data))
-        request_data = connection.requests_data[0]
-        eq_(2, len(request_data.query_string_args))
-        assert_in('property', request_data.query_string_args)
-        eq_(properties, request_data.query_string_args['property'])
+        eq_(1, len(connection.remote_method_invocations))
+        remote_method_invocation = connection.remote_method_invocations[0]
+        eq_(2, len(remote_method_invocation.query_string_args))
+        assert_in('property', remote_method_invocation.query_string_args)
+        eq_(properties, remote_method_invocation.query_string_args['property'])
 
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
@@ -118,7 +118,7 @@ class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(1, len(connection.requests_data))
+        eq_(1, len(connection.remote_method_invocations))
 
     def test_contacts_with_sub_contacts(self):
         expected_sub_contacts = [2, 3]
@@ -147,12 +147,17 @@ class _BaseGettingAllContactsTestCase(BaseMethodTestCase):
         eq_(list(expected_contacts), list(retrieved_contacts))
 
     def _make_connection(self, contacts):
-        response_data_maker = \
-            partial(self._replicate_response_data, contacts)
-        return MockPortalConnection(response_data_maker)
+        response_data_maker = partial(self._replicate_response_data, contacts)
+        response_data_maker_by_remote_method = \
+            {self._REMOTE_METHOD: response_data_maker}
+        return MockPortalConnection(response_data_maker_by_remote_method)
 
-    def _replicate_response_data(self, contacts, request_data):
-        query_string_args = request_data.query_string_args
+    def _replicate_response_data(
+        self,
+        contacts,
+        query_string_args,
+        body_deserialization,
+        ):
         last_contact_vid = query_string_args.get('vidOffset')
         properties = query_string_args.get('property', [])
 
@@ -187,17 +192,18 @@ class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
 
-        self._assert_expected_remote_method_used(connection)
+        eq_(2, len(connection.remote_method_invocations))
 
-        eq_(2, len(connection.requests_data))
+        remote_method_invocation2 = connection.remote_method_invocations[1]
+        eq_(2, len(remote_method_invocation2.query_string_args))
 
-        request2_data = connection.requests_data[1]
-        eq_(2, len(request2_data.query_string_args))
-
-        assert_in('vidOffset', request2_data.query_string_args)
+        assert_in('vidOffset', remote_method_invocation2.query_string_args)
         page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
         expect_vid_offset = page1_last_contact.vid
-        eq_(expect_vid_offset, request2_data.query_string_args['vidOffset'])
+        eq_(
+            expect_vid_offset,
+            remote_method_invocation2.query_string_args['vidOffset'],
+            )
 
 
 def _get_contacts_in_page(contacts, last_contact_vid, page_size):
@@ -247,10 +253,10 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
 
         self._assert_expected_remote_method_used(connection)
 
-        eq_(2, len(connection.requests_data))
+        eq_(2, len(connection.remote_method_invocations))
 
-        request2_data = connection.requests_data[1]
-        eq_(3, len(request2_data.query_string_args))
+        remote_method_invocation2 = connection.remote_method_invocations[1]
+        eq_(3, len(remote_method_invocation2.query_string_args))
 
         page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
         expected_query_string_args = {
@@ -259,7 +265,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             }
         assert_dict_contains_subset(
             expected_query_string_args,
-            request2_data.query_string_args,
+            remote_method_invocation2.query_string_args,
             )
 
 
@@ -274,7 +280,7 @@ class TestSavingContacts(BaseMethodTestCase):
         contacts_generator = iter([])
         save_contacts(contacts_generator, self.connection)
 
-        eq_(0, len(self.connection.requests_data))
+        eq_(0, len(self.connection.remote_method_invocations))
 
     def test_without_exceeding_batch_size_limit(self):
         contacts = make_contacts(_HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
@@ -284,10 +290,13 @@ class TestSavingContacts(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(self.connection)
 
-        eq_(1, len(self.connection.requests_data))
+        eq_(1, len(self.connection.remote_method_invocations))
 
-        request_data = self.connection.requests_data[0]
-        self._assert_contacts_sent_in_request(contacts, request_data)
+        remote_method_invocation = self.connection.remote_method_invocations[0]
+        self._assert_contacts_sent_in_request(
+            contacts,
+            remote_method_invocation,
+            )
 
     def test_exceeding_batch_size_limit(self):
         contacts = make_contacts(_HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
@@ -297,16 +306,23 @@ class TestSavingContacts(BaseMethodTestCase):
 
         self._assert_expected_remote_method_used(self.connection)
 
-        eq_(2, len(self.connection.requests_data))
+        eq_(2, len(self.connection.remote_method_invocations))
 
         contacts1 = contacts[:_HUBSPOT_BATCH_SAVING_SIZE_LIMIT]
-        request_data1 = self.connection.requests_data[0]
-        self._assert_contacts_sent_in_request(contacts1, request_data1)
+        remote_method_invocation1 = self.connection.remote_method_invocations[0]
+        self._assert_contacts_sent_in_request(
+            contacts1,
+            remote_method_invocation1,
+            )
 
         contacts2 = contacts[_HUBSPOT_BATCH_SAVING_SIZE_LIMIT:]
-        request_data2 = self.connection.requests_data[1]
-        self._assert_contacts_sent_in_request(contacts2, request_data2)
+        remote_method_invocation2 = self.connection.remote_method_invocations[1]
+        self._assert_contacts_sent_in_request(
+            contacts2,
+            remote_method_invocation2,
+            )
 
-    def _assert_contacts_sent_in_request(self, contacts, request_data):
+    @staticmethod
+    def _assert_contacts_sent_in_request(contacts, remote_method_invocation):
         contacts_data = format_contacts_data_for_saving(contacts)
-        eq_(contacts_data, request_data.body_deserialization)
+        eq_(contacts_data, remote_method_invocation.body_deserialization)

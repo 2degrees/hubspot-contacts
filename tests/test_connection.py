@@ -138,8 +138,8 @@ class TestPortalConnection(object):
 
         """
         expected_body_deserialization = {'foo': 'bar'}
-        response_maker = _ResponseMaker(200, expected_body_deserialization)
-        connection = _MockPortalConnection(response_maker)
+        response_data_maker = _ResponseMaker(200, expected_body_deserialization)
+        connection = _MockPortalConnection(response_data_maker)
 
         response_data = connection.send_get_request(_STUB_PATH_INFO)
 
@@ -158,8 +158,8 @@ class TestPortalConnection(object):
         An exception is raised when the response status code is unsupported.
 
         """
-        unsupported_response_maker = _ResponseMaker(304)
-        connection = _MockPortalConnection(unsupported_response_maker)
+        unsupported_response_data_maker = _ResponseMaker(304)
+        connection = _MockPortalConnection(unsupported_response_data_maker)
 
         with assert_raises(HubspotUnsupportedResponseError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
@@ -173,8 +173,9 @@ class TestPortalConnection(object):
         content type is not "application/json".
 
         """
-        unsupported_response_maker = _ResponseMaker(200, 'Text', 'text/plain')
-        connection = _MockPortalConnection(unsupported_response_maker)
+        unsupported_response_data_maker = \
+            _ResponseMaker(200, 'Text', 'text/plain')
+        connection = _MockPortalConnection(unsupported_response_data_maker)
 
         with assert_raises(HubspotUnsupportedResponseError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
@@ -184,8 +185,8 @@ class TestPortalConnection(object):
 
     def test_missing_response_content_type(self):
         """An exception is raised when the content type is missing."""
-        unsupported_response_maker = _ResponseMaker(200, 'Text', None)
-        connection = _MockPortalConnection(unsupported_response_maker)
+        unsupported_response_data_maker = _ResponseMaker(200, 'Text', None)
+        connection = _MockPortalConnection(unsupported_response_data_maker)
 
         with assert_raises(HubspotUnsupportedResponseError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
@@ -208,8 +209,8 @@ class TestPortalConnection(object):
 class TestErrorResponses(object):
 
     def test_server_error_response(self):
-        response_maker = _ResponseMaker(500)
-        connection = _MockPortalConnection(response_maker)
+        response_data_maker = _ResponseMaker(500)
+        connection = _MockPortalConnection(response_data_maker)
         with assert_raises(HubspotServerError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
 
@@ -224,8 +225,8 @@ class TestErrorResponses(object):
             'message': error_message,
             'requestId': request_id,
             }
-        response_maker = _ResponseMaker(400, body_deserialization)
-        connection = _MockPortalConnection(response_maker)
+        response_data_maker = _ResponseMaker(400, body_deserialization)
+        connection = _MockPortalConnection(response_data_maker)
 
         with assert_raises(HubspotClientError) as context_manager:
             connection.send_get_request(_STUB_PATH_INFO)
@@ -261,7 +262,7 @@ class TestAuthentication(object):
     def test_unauthorized_response(self):
         request_id = get_uuid4_str()
         error_message = 'Invalid credentials'
-        response_maker = _ResponseMaker(
+        response_data_maker = _ResponseMaker(
             401,
             {
                 'status': 'error',
@@ -270,7 +271,7 @@ class TestAuthentication(object):
                 },
             )
         connection = _MockPortalConnection(
-            response_maker,
+            response_data_maker,
             authentication_key=_STUB_AUTHENTICATION_KEY,
             )
 
@@ -287,7 +288,7 @@ class _MockPortalConnection(PortalConnection):
 
     def __init__(
         self,
-        response_maker=None,
+        response_data_maker=None,
         authentication_key=_STUB_AUTHENTICATION_KEY,
         change_source=None,
         *args,
@@ -296,7 +297,7 @@ class _MockPortalConnection(PortalConnection):
         super_class = super(_MockPortalConnection, self)
         super_class.__init__(authentication_key, change_source, *args, **kwargs)
 
-        self.adapter = _MockRequestsAdapter(response_maker)
+        self.adapter = _MockRequestsAdapter(response_data_maker)
         self._session.mount(self._API_URL, self.adapter)
 
     @property
@@ -306,10 +307,10 @@ class _MockPortalConnection(PortalConnection):
 
 class _MockRequestsAdapter(RequestsHTTPAdapter):
 
-    def __init__(self, response_maker=None, *args, **kwargs):
+    def __init__(self, response_data_maker=None, *args, **kwargs):
         super(_MockRequestsAdapter, self).__init__(*args, **kwargs)
 
-        self._response_maker = response_maker or _EMPTY_RESPONSE_MAKER
+        self._response_data_maker = response_data_maker or _EMPTY_RESPONSE_MAKER
 
         self.prepared_requests = []
         self.is_keep_alive_always_used = True
@@ -321,7 +322,7 @@ class _MockRequestsAdapter(RequestsHTTPAdapter):
 
         self.prepared_requests.append(request)
 
-        response = self._response_maker(request)
+        response = self._response_data_maker(request)
         return response
 
     def close(self, *args, **kwargs):
