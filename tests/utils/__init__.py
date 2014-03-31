@@ -30,13 +30,3 @@ class BaseMethodTestCase(object):
     def _assert_expected_remote_method_used(cls, connection):
         for remote_method_invocation in connection.remote_method_invocations:
             eq_(cls._REMOTE_METHOD, remote_method_invocation.remote_method)
-
-
-class ConstantResponseDataMaker(object):
-
-    def __init__(self, response_data):
-        super(ConstantResponseDataMaker, self).__init__()
-        self.response_data = response_data
-
-    def __call__(self, remote_method, body_deserialization):
-        return self.response_data

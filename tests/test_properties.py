@@ -34,11 +34,11 @@ from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.properties import get_property_type_name
 from hubspot.contacts.properties import get_raw_property_options
+from hubspot.test_utils import ConstantResponseDataMaker
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
-from tests.utils import ConstantResponseDataMaker
 from tests.utils.generic import get_uuid4_str
 
 

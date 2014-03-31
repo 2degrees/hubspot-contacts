@@ -95,3 +95,13 @@ class MockPortalConnection(object):
                 invocation.remote_method == remote_method
             ]
         return filtered_remote_method_invocations
+
+
+class ConstantResponseDataMaker(object):
+
+    def __init__(self, response_data):
+        super(ConstantResponseDataMaker, self).__init__()
+        self.response_data = response_data
+
+    def __call__(self, remote_method, body_deserialization):
+        return self.response_data
