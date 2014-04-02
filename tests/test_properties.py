@@ -22,7 +22,7 @@ from nose.tools import eq_
 from voluptuous import MultipleInvalid
 
 from hubspot.contacts.exc import HubspotClientError
-from hubspot.contacts.generic_utils import remove_unset_values_from_dict
+from hubspot.contacts.formatters import format_data_for_property
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import EnumerationProperty
@@ -32,14 +32,14 @@ from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.properties import create_property
 from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
-from hubspot.contacts.properties import get_property_type_name
-from hubspot.contacts.properties import get_raw_property_options
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import ConstantResponseDataMaker
 from tests.utils.generic import get_uuid4_str
+from tests.utils.method_response_formatters.properties_retrieval import \
+    replicate_get_all_properties_response_data
 
 
 _STUB_PROPERTY = Property(
@@ -71,7 +71,7 @@ class TestGettingAllProperties(BaseMethodTestCase):
             DatetimeProperty.init_from_generalization(_STUB_PROPERTY),
             ]
         response_data_maker = partial(
-            _replicate_get_all_properties_response_data,
+            replicate_get_all_properties_response_data,
             properties,
             )
         response_data_maker_by_remote_method = \
@@ -115,7 +115,7 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
     def _check_property_retrieval(self, property_):
         response_data_maker = \
-            partial(_replicate_get_all_properties_response_data, [property_])
+            partial(replicate_get_all_properties_response_data, [property_])
         response_data_maker_by_remote_method = \
             {self._REMOTE_METHOD: response_data_maker}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
@@ -158,15 +158,6 @@ class TestCreatingProperty(BaseMethodTestCase):
 
         self._check_create_property(property_, property_)
 
-    def test_some_fields_unset(self):
-        property_ = StringProperty.init_from_generalization(_STUB_PROPERTY)
-        property_.description = None
-
-        expected_created_property = property_.copy()
-        expected_created_property.description = ''
-
-        self._check_create_property(property_, expected_created_property)
-
     def test_already_exists(self):
         self._assert_error_response(
             _replicate_create_property_duplicate_error_response,
@@ -181,7 +172,7 @@ class TestCreatingProperty(BaseMethodTestCase):
 
     @classmethod
     def _check_create_property(cls, property_, expected_property):
-        property_data = _get_data_from_property(property_)
+        property_data = format_data_for_property(property_)
         response_data_maker_by_remote_method = \
             {cls._REMOTE_METHOD: ConstantResponseDataMaker(property_data)}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
@@ -190,10 +181,8 @@ class TestCreatingProperty(BaseMethodTestCase):
         eq_(1, len(connection.remote_method_invocations))
         remote_method_invocation = connection.remote_method_invocations[0]
 
-        expected_remote_method_invocation = \
-            remove_unset_values_from_dict(property_data)
         eq_(
-            expected_remote_method_invocation,
+            property_data,
             remote_method_invocation.body_deserialization,
             )
 
@@ -255,30 +244,6 @@ def _replicate_create_property_invalid_group_error_response(
         )
 
 
-def _replicate_get_all_properties_response_data(
-    properties,
-    query_string_args,
-    body_deserialization,
-    ):
-    properties_data = [_get_data_from_property(p) for p in properties]
-    return properties_data
-
-
-def _get_data_from_property(property_):
-    property_type = get_property_type_name(property_)
-    property_options = get_raw_property_options(property_)
-    property_data = {
-        'name': property_.name,
-        'label': _convert_none_to_empty_string(property_.label),
-        'description': _convert_none_to_empty_string(property_.description),
-        'groupName': property_.group_name,
-        'fieldType': _convert_none_to_empty_string(property_.field_widget),
-        'type': property_type,
-        'options': property_options,
-        }
-    return property_data
-
-
 def _replicate_get_all_properties_invalid_response_data(
     remote_method,
     body_deserialization,
@@ -293,7 +258,3 @@ def _replicate_get_all_properties_invalid_response_data(
         'options': [],
         }]
     return properties
-
-
-def _convert_none_to_empty_string(value):
-    return '' if value is None else value

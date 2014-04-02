@@ -14,19 +14,13 @@
 #
 ##############################################################################
 
-
-from itertools import islice
-
-
-def ipaginate(iterable, page_size):
-    next_page_iterable = _get_next_page_iterable_as_list(iterable, page_size)
-    while next_page_iterable:
-        yield next_page_iterable
-
-        next_page_iterable = \
-            _get_next_page_iterable_as_list(iterable, page_size)
+from hubspot.contacts.formatters import format_data_for_property
 
 
-def _get_next_page_iterable_as_list(iterable, page_size):
-    next_page_iterable = list(islice(iterable, page_size))
-    return next_page_iterable
+def replicate_get_all_properties_response_data(
+    properties,
+    query_string_args,
+    body_deserialization,
+    ):
+    properties_data = [format_data_for_property(p) for p in properties]
+    return properties_data
