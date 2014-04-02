@@ -14,28 +14,9 @@
 #
 ##############################################################################
 
-
-def format_contacts_data_for_saving(contacts):
-    contacts_data = [_format_contact_data_for_saving(c) for c in contacts]
-    return contacts_data
+from hubspot.contacts.properties import PROPERTY_TYPE_BY_NAME
 
 
-def _format_contact_data_for_saving(contact):
-    contact_data = {
-        'email': contact.email_address,
-        'properties': _format_contact_properties_for_saving(contact.properties),
-        }
-    return contact_data
-
-
-def _format_contact_properties_for_saving(contact_properties):
-    contact_properties_data = [
-        {'property': n, 'value': v} for n, v in contact_properties.items()
-        ]
-    return contact_properties_data
-
-
-# TODO: Move to sub-module
 def format_data_for_property(property_):
     property_type = _get_property_type_name(property_)
     property_options = _get_raw_property_options(property_)
@@ -52,10 +33,8 @@ def format_data_for_property(property_):
 
 
 def _get_property_type_name(property_):
-    # Move to module-level, avoiding cyclic import
-    from hubspot.contacts.properties import PROPERTY_TYPE_BY_NAME
     _PROPERTY_TYPE_NAME_BY_PROPERTY_TYPE = \
-        {type_: type_name  for type_name, type_ in PROPERTY_TYPE_BY_NAME.items()}
+        {type_: type_name for type_name, type_ in PROPERTY_TYPE_BY_NAME.items()}
 
     property_type = property_.__class__
     property_type_name = _PROPERTY_TYPE_NAME_BY_PROPERTY_TYPE[property_type]

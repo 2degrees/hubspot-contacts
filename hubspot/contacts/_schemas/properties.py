@@ -14,13 +14,32 @@
 #
 ##############################################################################
 
-from hubspot.contacts.formatters import format_data_for_property
+from voluptuous import Any
+from voluptuous import Schema
+
+from hubspot.contacts.properties import PROPERTY_TYPE_BY_NAME
 
 
-def replicate_get_all_properties_response_data(
-    properties,
-    query_string_args,
-    body_deserialization,
-    ):
-    properties_data = [format_data_for_property(p) for p in properties]
-    return properties_data
+_PROPERTY_RESPONSE_SCHEMA_DEFINITION = {
+    'name': unicode,
+    'type': Any(*PROPERTY_TYPE_BY_NAME.keys()),
+    'options': [],
+    }
+
+CREATE_PROPERTY_RESPONSE_SCHEMA = Schema(
+    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
+    required=True,
+    extra=True,
+    )
+
+
+_GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION = [
+    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
+    ]
+
+
+GET_ALL_PROPERTIES_RESPONSE_SCHEMA = Schema(
+    _GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION,
+    required=True,
+    extra=True,
+    )

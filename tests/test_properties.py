@@ -22,7 +22,6 @@ from nose.tools import eq_
 from voluptuous import MultipleInvalid
 
 from hubspot.contacts.exc import HubspotClientError
-from hubspot.contacts.formatters import format_data_for_property
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import EnumerationProperty
@@ -32,13 +31,15 @@ from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.properties import create_property
 from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
+from hubspot.contacts.request_data_formatters.properties import \
+    format_data_for_property
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
 from tests.utils import ConstantResponseDataMaker
 from tests.utils.generic import get_uuid4_str
-from tests.utils.method_response_formatters.properties_retrieval import \
+from tests.utils.response_data_formatters.properties_retrieval import \
     replicate_get_all_properties_response_data
 
 

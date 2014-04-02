@@ -14,34 +14,22 @@
 #
 ##############################################################################
 
-class HubspotException(Exception):
-    pass
+
+def format_contacts_data_for_saving(contacts):
+    contacts_data = [_format_contact_data_for_saving(c) for c in contacts]
+    return contacts_data
 
 
-class HubspotUnsupportedResponseError(HubspotException):
-    pass
+def _format_contact_data_for_saving(contact):
+    contact_data = {
+        'email': contact.email_address,
+        'properties': _format_contact_properties_for_saving(contact.properties),
+        }
+    return contact_data
 
 
-class HubspotClientError(HubspotException):
-    """Representation of a 40X error"""
-
-    def __init__(self, msg, request_id):
-        super(HubspotClientError, self).__init__(msg)
-
-        self.request_id = request_id
-
-
-class HubspotAuthenticationError(HubspotClientError):
-    pass
-
-
-class HubspotServerError(HubspotException):
-    """Representation of a 50X error"""
-
-    def __init__(self, msg, http_status_code):
-        super(HubspotServerError, self).__init__(msg)
-
-        self.http_status_code = http_status_code
-
-    def __str__(self):
-        return '{} {}'.format(self.http_status_code, self.message)
+def _format_contact_properties_for_saving(contact_properties):
+    contact_properties_data = [
+        {'property': n, 'value': v} for n, v in contact_properties.items()
+        ]
+    return contact_properties_data

@@ -27,18 +27,19 @@ from hubspot.contacts import _HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
-from hubspot.contacts.formatters import format_contacts_data_for_saving
+from hubspot.contacts.request_data_formatters.contacts import \
+    format_contacts_data_for_saving
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
-from tests.utils.method_response_formatters.contacts_retrieval import \
+from tests.utils.response_data_formatters.contacts_retrieval import \
     format_data_from_all_contacts_retrieval
-from tests.utils.method_response_formatters.contacts_retrieval import \
+from tests.utils.response_data_formatters.contacts_retrieval import \
     format_data_from_all_contacts_by_last_update_retrieval
-from tests.utils.method_response_formatters.contacts_retrieval import \
+from tests.utils.response_data_formatters.contacts_retrieval import \
     STUB_TIMESTAMP
 
 

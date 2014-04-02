@@ -18,7 +18,8 @@ from pyrecord import Record
 
 from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
 from hubspot.contacts.generic_utils import ipaginate
-from hubspot.contacts.formatters import format_contacts_data_for_saving
+from hubspot.contacts.request_data_formatters.contacts import \
+    format_contacts_data_for_saving
 
 
 _HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000

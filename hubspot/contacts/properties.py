@@ -15,10 +15,6 @@
 ##############################################################################
 
 from pyrecord import Record
-from voluptuous import Any
-from voluptuous import Schema
-
-from hubspot.contacts.formatters import format_data_for_property
 
 
 Property = Record.create_type(
@@ -50,34 +46,12 @@ PROPERTY_TYPE_BY_NAME = {
     }
 
 
-_PROPERTY_RESPONSE_SCHEMA_DEFINITION = {
-    'name': unicode,
-    'type': Any(*PROPERTY_TYPE_BY_NAME.keys()),
-    'options': [],
-    }
-
-_CREATE_PROPERTY_RESPONSE_SCHEMA = Schema(
-    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
-    required=True,
-    extra=True,
-    )
-
-
-_GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION = [
-    _PROPERTY_RESPONSE_SCHEMA_DEFINITION,
-    ]
-
-
-_GET_ALL_PROPERTIES_RESPONSE_SCHEMA = Schema(
-    _GET_ALL_PROPERTIES_RESPONSE_SCHEMA_DEFINITION,
-    required=True,
-    extra=True,
-    )
-
-
 def get_all_properties(connection):
+    from hubspot.contacts._schemas.properties import \
+        GET_ALL_PROPERTIES_RESPONSE_SCHEMA
+
     properties_data = connection.send_get_request('/properties')
-    _GET_ALL_PROPERTIES_RESPONSE_SCHEMA(properties_data)
+    GET_ALL_PROPERTIES_RESPONSE_SCHEMA(properties_data)
 
     properties = []
     for property_data in properties_data:
@@ -87,6 +61,11 @@ def get_all_properties(connection):
 
 
 def create_property(property_, connection):
+    from hubspot.contacts._schemas.properties import \
+        CREATE_PROPERTY_RESPONSE_SCHEMA
+    from hubspot.contacts.request_data_formatters.properties import \
+        format_data_for_property
+
     request_body_deserialization = format_data_for_property(property_)
 
     response_data = connection.send_put_request(
@@ -94,7 +73,7 @@ def create_property(property_, connection):
         request_body_deserialization,
         )
 
-    property_data = _CREATE_PROPERTY_RESPONSE_SCHEMA(response_data)
+    property_data = CREATE_PROPERTY_RESPONSE_SCHEMA(response_data)
     created_property = _build_property_from_data(property_data)
     return created_property
 
