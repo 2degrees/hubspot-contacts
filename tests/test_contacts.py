@@ -37,13 +37,13 @@ from hubspot.contacts.request_data_formatters.contacts import \
     format_contacts_data_for_saving
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
+from hubspot.test_utils import ConstantResponseDataMaker
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 
 from tests.test_properties import PROPERTIES_RETRIEVAL_REMOTE_METHOD
 from tests.test_properties import STUB_PROPERTY
 from tests.utils import BaseMethodTestCase
-from tests.utils import ConstantResponseDataMaker
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
 from tests.utils.response_data_formatters.contacts_retrieval import \

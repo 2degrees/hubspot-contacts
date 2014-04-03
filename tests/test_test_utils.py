@@ -17,11 +17,10 @@
 from nose.tools import assert_is_instance
 from nose.tools import eq_
 
+from hubspot.test_utils import ConstantResponseDataMaker
 from hubspot.test_utils import MockPortalConnection
 from hubspot.test_utils import RemoteMethod
 from hubspot.test_utils import RemoteMethodInvocation
-
-from tests.utils import ConstantResponseDataMaker
 
 
 _STUB_PATH_INFO = '/foo'
