@@ -38,5 +38,5 @@ class ConstantResponseDataMaker(object):
         super(ConstantResponseDataMaker, self).__init__()
         self.response_data = response_data
 
-    def __call__(self, remote_method, body_deserialization):
+    def __call__(self, query_string_args, body_deserialization):
         return self.response_data

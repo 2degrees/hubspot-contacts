@@ -14,10 +14,19 @@
 #
 ##############################################################################
 
+from collections import defaultdict
+from datetime import datetime
+from decimal import Decimal
+from json import loads as json_deserialize
+
 from pyrecord import Record
 
 from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
 from hubspot.contacts.generic_utils import ipaginate
+from hubspot.contacts.properties import BooleanProperty
+from hubspot.contacts.properties import DatetimeProperty
+from hubspot.contacts.properties import NumberProperty
+from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.request_data_formatters.contacts import \
     format_contacts_data_for_saving
 
@@ -37,37 +46,44 @@ Contact = Record.create_type(
     )
 
 
-def get_all_contacts(connection, properties=()):
+def get_all_contacts(connection, property_names=()):
     all_contacts = _get_contacts_from_all_pages(
         '/lists/all/contacts/all',
         connection,
-        properties,
+        property_names,
         )
     return all_contacts
 
 
-def get_all_contacts_by_last_update(connection, properties=()):
+def get_all_contacts_by_last_update(connection, property_names=()):
     all_contacts_by_last_update = _get_contacts_from_all_pages(
         '/lists/recently_updated/contacts/recent',
         connection,
-        properties,
+        property_names,
         )
     return all_contacts_by_last_update
 
 
-def _get_contacts_from_all_pages(path_info, connection, properties):
+def _get_contacts_from_all_pages(path_info, connection, property_names):
+    property_definitions = get_all_properties(connection)
+    property_type_by_property_name = \
+        {p.name: type(p) for p in property_definitions}
+
     contacts_data_by_page = \
-        _get_contacts_data_by_page(path_info, connection, properties)
+        _get_contacts_data_by_page(path_info, connection, property_names)
     for contacts_data in contacts_data_by_page:
         for contact_data in contacts_data:
-            contact = _build_contact_from_data(contact_data)
+            contact = _build_contact_from_data(
+                contact_data,
+                property_type_by_property_name,
+                )
             yield contact
 
 
-def _get_contacts_data_by_page(path_info, connection, properties):
+def _get_contacts_data_by_page(path_info, connection, property_names):
     base_query_string_args = {'count': _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
-    if properties:
-        base_query_string_args['property'] = properties
+    if property_names:
+        base_query_string_args['property'] = property_names
     has_more_pages = True
     last_contact_vid = None
     last_contact_addition_timestamp = None
@@ -89,14 +105,38 @@ def _get_contacts_data_by_page(path_info, connection, properties):
         has_more_pages = contacts_data['has-more']
 
 
-def _build_contact_from_data(contact_data):
+def _convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds):
+    timestamp_milliseconds = Decimal(timestamp_milliseconds)
+    timestamp_as_datetime = \
+        datetime.fromtimestamp(timestamp_milliseconds / Decimal(1000))
+
+    return timestamp_as_datetime
+
+
+_PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
+    lambda: unicode,
+    {
+        BooleanProperty: json_deserialize,
+        DatetimeProperty: _convert_timestamp_in_milliseconds_to_datetime,
+        NumberProperty: int,
+        },
+    )
+
+
+def _build_contact_from_data(contact_data, property_type_by_property_name):
     canonical_profile_data, additional_profiles_data = \
         _get_profiles_data_from_contact_data(contact_data)
     email_address = \
         _get_email_address_from_contact_profile_data(canonical_profile_data)
     sub_contacts = _get_sub_contacts_from_contact_data(additional_profiles_data)
 
-    properties = contact_data['properties']
+    properties = {}
+    for property_name, property_value in contact_data['properties'].items():
+        property_type = property_type_by_property_name.get(property_name)
+        if property_type:
+            converter = \
+                _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
+            properties[property_name] = converter(property_value)
 
     return Contact(contact_data['vid'], email_address, properties, sub_contacts)
 

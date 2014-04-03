@@ -43,7 +43,7 @@ from tests.utils.response_data_formatters.properties_retrieval import \
     replicate_get_all_properties_response_data
 
 
-_STUB_PROPERTY = Property(
+STUB_PROPERTY = Property(
     'is_polite',
     'Is contact polite?',
     'Whether the contact is polite',
@@ -52,9 +52,12 @@ _STUB_PROPERTY = Property(
     )
 
 
+PROPERTIES_RETRIEVAL_REMOTE_METHOD = RemoteMethod('/properties', 'GET')
+
+
 class TestGettingAllProperties(BaseMethodTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/properties', 'GET')
+    _REMOTE_METHOD = PROPERTIES_RETRIEVAL_REMOTE_METHOD
 
     def test_no_properties(self):
         response_data_maker_by_remote_method = \
@@ -68,8 +71,8 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
     def test_multiple_properties(self):
         properties = [
-            BooleanProperty.init_from_generalization(_STUB_PROPERTY),
-            DatetimeProperty.init_from_generalization(_STUB_PROPERTY),
+            BooleanProperty.init_from_generalization(STUB_PROPERTY),
+            DatetimeProperty.init_from_generalization(STUB_PROPERTY),
             ]
         response_data_maker = partial(
             replicate_get_all_properties_response_data,
@@ -89,29 +92,29 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
     def test_boolean(self):
         boolean_property = \
-            BooleanProperty.init_from_generalization(_STUB_PROPERTY)
+            BooleanProperty.init_from_generalization(STUB_PROPERTY)
         self._check_property_retrieval(boolean_property)
 
     def test_datetime(self):
         datetime_property = \
-            DatetimeProperty.init_from_generalization(_STUB_PROPERTY)
+            DatetimeProperty.init_from_generalization(STUB_PROPERTY)
         self._check_property_retrieval(datetime_property)
 
     def test_enumeration(self):
         enumeration_property = EnumerationProperty.init_from_generalization(
-            _STUB_PROPERTY,
+            STUB_PROPERTY,
             options={'label1': 'value1', 'label2': 'value2'},
             )
         self._check_property_retrieval(enumeration_property)
 
     def test_number(self):
         number_property = \
-            NumberProperty.init_from_generalization(_STUB_PROPERTY)
+            NumberProperty.init_from_generalization(STUB_PROPERTY)
         self._check_property_retrieval(number_property)
 
     def test_string(self):
         string_property = \
-            StringProperty.init_from_generalization(_STUB_PROPERTY)
+            StringProperty.init_from_generalization(STUB_PROPERTY)
         self._check_property_retrieval(string_property)
 
     def _check_property_retrieval(self, property_):
@@ -144,16 +147,16 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
 class TestCreatingProperty(BaseMethodTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/properties/' + _STUB_PROPERTY.name, 'PUT')
+    _REMOTE_METHOD = RemoteMethod('/properties/' + STUB_PROPERTY.name, 'PUT')
 
     def test_all_fields_set(self):
-        property_ = NumberProperty.init_from_generalization(_STUB_PROPERTY)
+        property_ = NumberProperty.init_from_generalization(STUB_PROPERTY)
 
         self._check_create_property(property_, property_)
 
     def test_enum_options(self):
         property_ = EnumerationProperty.init_from_generalization(
-            _STUB_PROPERTY,
+            STUB_PROPERTY,
             options={'Yes': 'yes', 'No': 'no', 'Unknown': 'unknown'},
             )
 
@@ -174,6 +177,7 @@ class TestCreatingProperty(BaseMethodTestCase):
     @classmethod
     def _check_create_property(cls, property_, expected_property):
         property_data = format_data_for_property(property_)
+
         response_data_maker_by_remote_method = \
             {cls._REMOTE_METHOD: ConstantResponseDataMaker(property_data)}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
@@ -195,7 +199,7 @@ class TestCreatingProperty(BaseMethodTestCase):
         error_generator,
         attribute_name_in_error_msg,
         ):
-        property_ = StringProperty.init_from_generalization(_STUB_PROPERTY)
+        property_ = StringProperty.init_from_generalization(STUB_PROPERTY)
         response_data_maker_by_remote_method = \
             {cls._REMOTE_METHOD: error_generator}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
