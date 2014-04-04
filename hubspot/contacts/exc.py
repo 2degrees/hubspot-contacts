@@ -45,3 +45,7 @@ class HubspotServerError(HubspotException):
 
     def __str__(self):
         return '{} {}'.format(self.http_status_code, self.message)
+
+
+class HubspotPropertyValueError(HubspotException):
+    pass

@@ -65,9 +65,8 @@ def get_all_contacts_by_last_update(connection, property_names=()):
 
 
 def _get_contacts_from_all_pages(path_info, connection, property_names):
-    property_definitions = get_all_properties(connection)
     property_type_by_property_name = \
-        {p.name: type(p) for p in property_definitions}
+        _get_property_type_by_property_name(connection)
 
     contacts_data_by_page = \
         _get_contacts_data_by_page(path_info, connection, property_names)
@@ -118,7 +117,7 @@ _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
     {
         BooleanProperty: json_deserialize,
         DatetimeProperty: _convert_timestamp_in_milliseconds_to_datetime,
-        NumberProperty: int,
+        NumberProperty: Decimal,
         },
     )
 
@@ -167,7 +166,20 @@ def _get_email_address_from_contact_profile_data(contact_profile_data):
 
 
 def save_contacts(contacts, connection):
+    property_type_by_property_name = \
+        _get_property_type_by_property_name(connection)
+
     contacts_batches = ipaginate(contacts, _HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
     for contacts_batch in contacts_batches:
-        contacts_batch_data = format_contacts_data_for_saving(contacts_batch)
+        contacts_batch_data = format_contacts_data_for_saving(
+            contacts_batch,
+            property_type_by_property_name,
+            )
         connection.send_post_request('/contact/batch/', contacts_batch_data)
+
+
+def _get_property_type_by_property_name(connection):
+    property_definitions = get_all_properties(connection)
+    property_type_by_property_name = \
+        {p.name: type(p) for p in property_definitions}
+    return property_type_by_property_name

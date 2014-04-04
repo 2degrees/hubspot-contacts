@@ -51,6 +51,20 @@ STUB_PROPERTY = Property(
     'booleancheckbox',
     )
 
+STUB_STRING_PROPERTY = StringProperty.init_from_generalization(STUB_PROPERTY)
+
+STUB_BOOLEAN_PROPERTY = BooleanProperty.init_from_generalization(STUB_PROPERTY)
+
+STUB_DATETIME_PROPERTY = \
+    DatetimeProperty.init_from_generalization(STUB_PROPERTY)
+
+STUB_ENUMERATION_PROPERTY = EnumerationProperty.init_from_generalization(
+    STUB_PROPERTY,
+    options={'label1': 'value1', 'label2': '123'},
+    )
+
+STUB_NUMBER_PROPERTY = NumberProperty.init_from_generalization(STUB_PROPERTY)
+
 
 PROPERTIES_RETRIEVAL_REMOTE_METHOD = RemoteMethod('/properties', 'GET')
 
@@ -70,10 +84,7 @@ class TestGettingAllProperties(BaseMethodTestCase):
         eq_(0, len(retrieved_properties))
 
     def test_multiple_properties(self):
-        properties = [
-            BooleanProperty.init_from_generalization(STUB_PROPERTY),
-            DatetimeProperty.init_from_generalization(STUB_PROPERTY),
-            ]
+        properties = [STUB_BOOLEAN_PROPERTY, STUB_DATETIME_PROPERTY]
         response_data_maker = partial(
             replicate_get_all_properties_response_data,
             properties,
@@ -91,31 +102,19 @@ class TestGettingAllProperties(BaseMethodTestCase):
     #{ Property specializations
 
     def test_boolean(self):
-        boolean_property = \
-            BooleanProperty.init_from_generalization(STUB_PROPERTY)
-        self._check_property_retrieval(boolean_property)
+        self._check_property_retrieval(STUB_BOOLEAN_PROPERTY)
 
     def test_datetime(self):
-        datetime_property = \
-            DatetimeProperty.init_from_generalization(STUB_PROPERTY)
-        self._check_property_retrieval(datetime_property)
+        self._check_property_retrieval(STUB_DATETIME_PROPERTY)
 
     def test_enumeration(self):
-        enumeration_property = EnumerationProperty.init_from_generalization(
-            STUB_PROPERTY,
-            options={'label1': 'value1', 'label2': 'value2'},
-            )
-        self._check_property_retrieval(enumeration_property)
+        self._check_property_retrieval(STUB_ENUMERATION_PROPERTY)
 
     def test_number(self):
-        number_property = \
-            NumberProperty.init_from_generalization(STUB_PROPERTY)
-        self._check_property_retrieval(number_property)
+        self._check_property_retrieval(STUB_NUMBER_PROPERTY)
 
     def test_string(self):
-        string_property = \
-            StringProperty.init_from_generalization(STUB_PROPERTY)
-        self._check_property_retrieval(string_property)
+        self._check_property_retrieval(STUB_STRING_PROPERTY)
 
     def _check_property_retrieval(self, property_):
         response_data_maker = \
@@ -150,17 +149,13 @@ class TestCreatingProperty(BaseMethodTestCase):
     _REMOTE_METHOD = RemoteMethod('/properties/' + STUB_PROPERTY.name, 'PUT')
 
     def test_all_fields_set(self):
-        property_ = NumberProperty.init_from_generalization(STUB_PROPERTY)
-
-        self._check_create_property(property_, property_)
+        self._check_create_property(STUB_NUMBER_PROPERTY, STUB_NUMBER_PROPERTY)
 
     def test_enum_options(self):
-        property_ = EnumerationProperty.init_from_generalization(
-            STUB_PROPERTY,
-            options={'Yes': 'yes', 'No': 'no', 'Unknown': 'unknown'},
+        self._check_create_property(
+            STUB_ENUMERATION_PROPERTY,
+            STUB_ENUMERATION_PROPERTY,
             )
-
-        self._check_create_property(property_, property_)
 
     def test_already_exists(self):
         self._assert_error_response(
@@ -199,16 +194,16 @@ class TestCreatingProperty(BaseMethodTestCase):
         error_generator,
         attribute_name_in_error_msg,
         ):
-        property_ = StringProperty.init_from_generalization(STUB_PROPERTY)
         response_data_maker_by_remote_method = \
             {cls._REMOTE_METHOD: error_generator}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
 
         with assert_raises(HubspotClientError) as context_manager:
-            create_property(property_, connection)
+            create_property(STUB_STRING_PROPERTY, connection)
 
         exception = context_manager.exception
-        attribute_in_error_msg = getattr(property_, attribute_name_in_error_msg)
+        attribute_in_error_msg = \
+            getattr(STUB_STRING_PROPERTY, attribute_name_in_error_msg)
         assert_in(attribute_in_error_msg, str(exception))
 
 

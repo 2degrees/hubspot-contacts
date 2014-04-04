@@ -15,9 +15,10 @@
 ##############################################################################
 
 from datetime import datetime
-from decimal import Decimal
 from json import dumps as json_serialize
-from time import mktime as convert_timetuple_to_timestamp
+
+from hubspot.contacts.generic_utils import \
+    convert_date_to_timestamp_in_milliseconds
 
 from tests.utils.generic import get_uuid4_str
 
@@ -87,7 +88,7 @@ def _format_contact_properties_data(contact_properties):
             property_value = json_serialize(property_value)
         elif isinstance(property_value, datetime):
             property_value = \
-                _convert_datetime_to_timestamp_in_milliseconds(property_value)
+                convert_date_to_timestamp_in_milliseconds(property_value)
 
         property_value = unicode(property_value)
         contact_properties_data[property_name] = {
@@ -95,29 +96,6 @@ def _format_contact_properties_data(contact_properties):
             'versions': [],
             }
     return contact_properties_data
-
-
-def _convert_datetime_to_timestamp_in_milliseconds(property_value):
-    variable1 = property_value.timetuple()
-    timestamp_in_seconds = convert_timetuple_to_timestamp(variable1)
-    timestamp_in_seconds = int(timestamp_in_seconds)
-    milliseconds = property_value.microsecond / 1000
-    timestamp_in_milliseconds = timestamp_in_seconds * 1000 + milliseconds
-    return timestamp_in_milliseconds
-
-
-def _convert_datetime_to_timestamp_in_milliseconds_(datetime_):
-    timestamp = _convert_datetime_to_timestamp(datetime_)
-    datetime_milliseconds = datetime_.microsecond / 1000
-    date_timestamp_in_milliseconds = timestamp * 1000 + datetime_milliseconds
-    return date_timestamp_in_milliseconds
-
-
-def _convert_datetime_to_timestamp(datetime_):
-    timetuple = datetime_.timetuple()
-    timestamp = convert_timetuple_to_timestamp(timetuple)
-    timestamp = int(timestamp)
-    return timestamp
 
 
 def _format_contact_profiles_data(contact):
