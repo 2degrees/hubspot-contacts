@@ -216,6 +216,7 @@ class TestErrorResponses(object):
 
         exception = context_manager.exception
         eq_(500, exception.http_status_code)
+        eq_('500 Reason', repr(exception))
 
     def test_client_error_response(self):
         request_id = get_uuid4_str()
@@ -349,6 +350,7 @@ class _ResponseMaker(object):
         response = RequestsResponse()
 
         response.status_code = self._status_code
+        response.reason = 'Reason'
 
         if self._content_type:
             content_type_header_value = \
