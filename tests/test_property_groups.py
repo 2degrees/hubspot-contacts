@@ -14,20 +14,20 @@
 #
 ##############################################################################
 
+from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_in
 from nose.tools import assert_not_in
 from nose.tools import assert_raises
 from nose.tools import eq_
 
-from hubspot.contacts.exc import HubspotClientError
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
 from hubspot.contacts.property_groups import create_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
-from hubspot.test_utils import ConstantResponseDataMaker
-from hubspot.test_utils import MockPortalConnection
-from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
 from tests.utils.generic import get_uuid4_str

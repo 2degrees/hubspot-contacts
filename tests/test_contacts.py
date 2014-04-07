@@ -21,6 +21,9 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from functools import partial
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_dict_contains_subset
 from nose.tools import assert_in
 from nose.tools import assert_raises_regexp
@@ -34,10 +37,6 @@ from hubspot.contacts import save_contacts
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
-from hubspot.test_utils import ConstantResponseDataMaker
-from hubspot.test_utils import MockPortalConnection
-from hubspot.test_utils import RemoteMethod
-
 from tests.test_properties import PROPERTIES_RETRIEVAL_REMOTE_METHOD
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
