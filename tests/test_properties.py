@@ -53,7 +53,11 @@ STUB_PROPERTY = Property(
 
 STUB_STRING_PROPERTY = StringProperty.init_from_generalization(STUB_PROPERTY)
 
-STUB_BOOLEAN_PROPERTY = BooleanProperty.init_from_generalization(STUB_PROPERTY)
+STUB_BOOLEAN_PROPERTY = BooleanProperty.init_from_generalization(
+    STUB_PROPERTY,
+    true_label='Sim',
+    false_label='Nao',
+    )
 
 STUB_DATETIME_PROPERTY = \
     DatetimeProperty.init_from_generalization(STUB_PROPERTY)
@@ -155,6 +159,12 @@ class TestCreatingProperty(BaseMethodTestCase):
         self._check_create_property(
             STUB_ENUMERATION_PROPERTY,
             STUB_ENUMERATION_PROPERTY,
+            )
+
+    def test_custom_boolean_labels(self):
+        self._check_create_property(
+            STUB_BOOLEAN_PROPERTY,
+            STUB_BOOLEAN_PROPERTY,
             )
 
     def test_already_exists(self):

@@ -47,8 +47,12 @@ def _get_raw_property_options(property_):
 
     if isinstance(property_, BooleanProperty):
         raw_options_data = [
-            {'label': 'True', 'value': 'true', 'displayOrder': 0},
-            {'label': 'False', 'value': 'false', 'displayOrder': 1},
+            {'label': property_.true_label, 'value': 'true', 'displayOrder': 0},
+            {
+                'label': property_.false_label,
+                'value': 'false',
+                'displayOrder': 1,
+                },
             ]
     elif isinstance(property_, EnumerationProperty):
         raw_options_data = []

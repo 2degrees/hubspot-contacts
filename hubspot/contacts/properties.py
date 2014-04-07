@@ -26,7 +26,13 @@ Property = Record.create_type(
     'field_widget',
     )
 
-BooleanProperty = Property.extend_type('BooleanProperty')
+BooleanProperty = Property.extend_type(
+    'BooleanProperty',
+    'true_label',
+    'false_label',
+    true_label='Yes',
+    false_label='No',
+    )
 
 DatetimeProperty = Property.extend_type('DatetimeProperty')
 
@@ -91,6 +97,11 @@ def _build_property_from_data(property_data):
         enumeration_options = \
             _build_enumeration_options_from_data(enumeration_options_data)
         additional_field_values = {'options': enumeration_options}
+
+    elif issubclass(property_type, BooleanProperty):
+        additional_field_values = \
+            _build_boolean_additional_field_values(property_data['options'])
+
     else:
         additional_field_values = {}
 
@@ -112,3 +123,22 @@ def _build_enumeration_options_from_data(enumeration_options_data):
         option_value = option_data['value']
         enumeration_options[option_label] = option_value
     return enumeration_options
+
+
+def _build_boolean_additional_field_values(boolean_options_data):
+    additional_field_values = {}
+    for option_data in boolean_options_data:
+        option_value = option_data['value']
+        if option_value == 'true':
+            additional_field_values['true_label'] = option_data['label']
+
+        elif option_value == 'false':
+            additional_field_values['false_label'] = option_data['label']
+
+        else:
+            assert False, '{!r} is not a valid bool option'.format(option_value)
+
+    assert 2 == len(additional_field_values), \
+        'Boolean properties must have exactly 2 options'
+
+    return additional_field_values
