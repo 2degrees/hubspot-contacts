@@ -15,11 +15,16 @@
 ##############################################################################
 
 from datetime import date
+from datetime import datetime
 from inspect import isgenerator
 from itertools import islice
-from time import mktime as convert_timetuple_to_timestamp
 
 from hubspot.contacts.exc import HubspotPropertyValueError
+
+
+_EPOCH_DATETIME = datetime(1970, 1, 1)
+
+_EPOCH_DATE = date.fromordinal(_EPOCH_DATETIME.toordinal())
 
 
 def ipaginate(iterable, page_size):
@@ -40,19 +45,21 @@ def _get_next_page_iterable_as_list(iterable, page_size):
 
 
 def convert_date_to_timestamp_in_milliseconds(datetime_or_date):
+    timestamp = _convert_datetime_to_timestamp(datetime_or_date)
+    date_timestamp_in_milliseconds = int(timestamp * 1000)
+    return date_timestamp_in_milliseconds
+
+
+def _convert_datetime_to_timestamp(datetime_or_date):
     if not isinstance(datetime_or_date, date):
         raise HubspotPropertyValueError(
             '{!r} is not a date'.format(datetime_or_date),
             )
 
-    timestamp = _convert_datetime_to_timestamp(datetime_or_date)
-    datetime_milliseconds = getattr(datetime_or_date, 'microsecond', 0) / 1000
-    date_timestamp_in_milliseconds = timestamp * 1000 + datetime_milliseconds
-    return date_timestamp_in_milliseconds
-
-
-def _convert_datetime_to_timestamp(datetime_):
-    timetuple = datetime_.timetuple()
-    timestamp = convert_timetuple_to_timestamp(timetuple)
-    timestamp = int(timestamp)
+    if isinstance(datetime_or_date, datetime):
+        epoch = _EPOCH_DATETIME
+    else:
+        epoch = _EPOCH_DATE
+    time_since_epoch = datetime_or_date - epoch
+    timestamp = time_since_epoch.total_seconds()
     return timestamp

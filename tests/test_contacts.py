@@ -193,7 +193,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
             (STUB_BOOLEAN_PROPERTY, 'true', True),
             (
                 STUB_DATETIME_PROPERTY,
-                u'1396603680140',
+                u'1396607280140',
                 datetime(2014, 4, 4, 10, 28, 0, 140000),
                 ),
             (STUB_ENUMERATION_PROPERTY, 'value1', 'value1'),
@@ -471,7 +471,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             [{'property': STUB_STRING_PROPERTY.name, 'value': property_value}]
         eq_(expected_contact_properties_data, contact_properties_data)
 
-    def test_type_casting(self):
+    def test_property_type_casting(self):
         test_cases_data = [
             (STUB_BOOLEAN_PROPERTY, True, u'true'),
             (STUB_BOOLEAN_PROPERTY, False, u'false'),
@@ -480,9 +480,9 @@ class TestSavingContacts(_BaseContactsTestCase):
             (
                 STUB_DATETIME_PROPERTY,
                 datetime(2014, 4, 4, 10, 28, 0, 140000),
-                u'1396603680140',
+                u'1396607280140',
                 ),
-            (STUB_DATETIME_PROPERTY, date(2014, 4, 4), u'1396566000000'),
+            (STUB_DATETIME_PROPERTY, date(2014, 4, 4), u'1396569600000'),
             (STUB_ENUMERATION_PROPERTY, u'value1', u'value1'),
             (STUB_ENUMERATION_PROPERTY, 123, u'123'),
             (STUB_NUMBER_PROPERTY, Decimal('123.01'), u'123.01'),

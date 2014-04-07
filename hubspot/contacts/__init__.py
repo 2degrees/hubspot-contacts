@@ -16,6 +16,7 @@
 
 from collections import defaultdict
 from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from json import loads as json_deserialize
 
@@ -31,12 +32,6 @@ from hubspot.contacts.request_data_formatters.contacts import \
     format_contacts_data_for_saving
 
 
-_HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
-
-
-_HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
-
-
 Contact = Record.create_type(
     'Contact',
     'vid',
@@ -44,6 +39,15 @@ Contact = Record.create_type(
     'properties',
     'sub_contacts',
     )
+
+
+_HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
+
+
+_HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
+
+
+_EPOCH_DATETIME = datetime(1970, 1, 1)
 
 
 def get_all_contacts(connection, property_names=()):
@@ -105,10 +109,9 @@ def _get_contacts_data_by_page(path_info, connection, property_names):
 
 
 def _convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds):
-    timestamp_milliseconds = Decimal(timestamp_milliseconds)
-    timestamp_as_datetime = \
-        datetime.fromtimestamp(timestamp_milliseconds / Decimal(1000))
-
+    timestamp_milliseconds = int(timestamp_milliseconds)
+    time_since_epoch = timedelta(milliseconds=timestamp_milliseconds)
+    timestamp_as_datetime = _EPOCH_DATETIME + time_since_epoch
     return timestamp_as_datetime
 
 
