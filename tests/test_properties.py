@@ -16,12 +16,15 @@
 
 from functools import partial
 
+from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_in
 from nose.tools import assert_raises
 from nose.tools import eq_
 from voluptuous import MultipleInvalid
 
-from hubspot.contacts.exc import HubspotClientError
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import EnumerationProperty
@@ -33,9 +36,6 @@ from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
-from hubspot.test_utils import ConstantResponseDataMaker
-from hubspot.test_utils import MockPortalConnection
-from hubspot.test_utils import RemoteMethod
 
 from tests.utils import BaseMethodTestCase
 from tests.utils.generic import get_uuid4_str

@@ -43,7 +43,7 @@ def DynamicDictionary(keys_validator, values_validator):
 
     @wraps(DynamicDictionary)
     def _validate(dictionary):
-        validated_dictionary= {
+        validated_dictionary = {
             keys_schema(k): values_schema(v) for k, v in dictionary.items()
             }
         return validated_dictionary
