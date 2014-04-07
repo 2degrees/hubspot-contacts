@@ -72,6 +72,7 @@ def _get_contacts_from_all_pages(path_info, connection, property_names):
     property_type_by_property_name = \
         _get_property_type_by_property_name(connection)
 
+    seen_contact_vids = set()
     contacts_data_by_page = \
         _get_contacts_data_by_page(path_info, connection, property_names)
     for contacts_data in contacts_data_by_page:
@@ -80,6 +81,9 @@ def _get_contacts_from_all_pages(path_info, connection, property_names):
                 contact_data,
                 property_type_by_property_name,
                 )
+            if contact.vid in seen_contact_vids:
+                continue
+            seen_contact_vids.add(contact.vid)
             yield contact
 
 

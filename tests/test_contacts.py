@@ -381,6 +381,14 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             remote_method_invocation2.query_string_args,
             )
 
+    def test_duplicated_contacts(self):
+        two_contacts = make_contacts(2)
+        expected_contacts = two_contacts + two_contacts[:1]
+
+        connection = self._make_connection_for_contacts(expected_contacts)
+
+        self._assert_retrieved_contacts_match(two_contacts, connection)
+
 
 class TestSavingContacts(_BaseContactsTestCase):
 
