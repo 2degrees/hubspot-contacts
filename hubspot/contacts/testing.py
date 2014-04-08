@@ -80,18 +80,6 @@ def _format_data_from_all_contacts_retrieval(
         }
 
 
-class RecentlyUpdatedContactsRetrievalResponseDataMaker(
-    AllContactsRetrievalResponseDataMaker,
-    ):
-
-    def __call__(self, *args, **kwargs):
-        super_class = \
-            super(RecentlyUpdatedContactsRetrievalResponseDataMaker, self)
-        response_data = super_class.__call__(*args, **kwargs)
-        response_data['time-offset'] = _STUB_TIMESTAMP
-        return response_data
-
-
 def _format_contacts_as_data_from_all_contacts_retrieval(
     all_contacts,
     required_property_names,
@@ -171,3 +159,23 @@ def _get_current_contacts_page_number(page_contacts, all_contacts, page_size):
     else:
         page_number = 1
     return page_number
+
+
+class RecentlyUpdatedContactsRetrievalResponseDataMaker(
+    AllContactsRetrievalResponseDataMaker,
+    ):
+
+    def __call__(self, query_string_args, body_deserialization):
+        super_class = \
+            super(RecentlyUpdatedContactsRetrievalResponseDataMaker, self)
+        response_data = \
+            super_class.__call__(query_string_args, body_deserialization)
+
+        time_offset = query_string_args.get('timeOffset', _STUB_TIMESTAMP)
+
+        contacts_data = response_data['contacts']
+        for contact_index, contact_data in enumerate(contacts_data, 1):
+            contact_data['addedAt'] = time_offset - contact_index
+
+        response_data['time-offset'] = time_offset - len(contacts_data)
+        return response_data

@@ -135,10 +135,4 @@ def _build_boolean_additional_field_values(boolean_options_data):
         elif option_value == 'false':
             additional_field_values['false_label'] = option_data['label']
 
-        else:
-            assert False, '{!r} is not a valid bool option'.format(option_value)
-
-    assert 2 == len(additional_field_values), \
-        'Boolean properties must have exactly 2 options'
-
     return additional_field_values

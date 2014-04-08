@@ -16,7 +16,6 @@
 
 from collections import defaultdict
 from datetime import datetime
-from datetime import timedelta
 from decimal import Decimal
 from json import loads as json_deserialize
 
@@ -25,6 +24,10 @@ from pyrecord import Record
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
+from hubspot.contacts.generic_utils import \
+    convert_date_to_timestamp_in_milliseconds
+from hubspot.contacts.generic_utils import \
+    convert_timestamp_in_milliseconds_to_datetime
 from hubspot.contacts.generic_utils import ipaginate
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
@@ -55,24 +58,43 @@ def get_all_contacts(connection, property_names=()):
     return all_contacts
 
 
-def get_all_contacts_by_last_update(connection, property_names=()):
+def get_all_contacts_by_last_update(
+    connection,
+    property_names=(),
+    cutoff_datetime=None,
+    ):
     all_contacts_by_last_update = _get_contacts_from_all_pages(
         '/lists/recently_updated/contacts/recent',
         connection,
         property_names,
+        cutoff_datetime=cutoff_datetime,
         )
     return all_contacts_by_last_update
 
 
-def _get_contacts_from_all_pages(path_info, connection, property_names):
+def _get_contacts_from_all_pages(
+    path_info,
+    connection,
+    property_names,
+    cutoff_datetime=None,
+    ):
     property_type_by_property_name = \
         _get_property_type_by_property_name(connection)
+
+    if cutoff_datetime:
+        cutoff_timestamp = \
+            convert_date_to_timestamp_in_milliseconds(cutoff_datetime)
+    else:
+        cutoff_timestamp = None
 
     seen_contact_vids = set()
     contacts_data_by_page = \
         _get_contacts_data_by_page(path_info, connection, property_names)
     for contacts_data in contacts_data_by_page:
         for contact_data in contacts_data:
+            if cutoff_timestamp and contact_data['addedAt'] < cutoff_timestamp:
+                raise StopIteration()
+
             contact = _build_contact_from_data(
                 contact_data,
                 property_type_by_property_name,
@@ -80,6 +102,7 @@ def _get_contacts_from_all_pages(path_info, connection, property_names):
             if contact.vid in seen_contact_vids:
                 continue
             seen_contact_vids.add(contact.vid)
+
             yield contact
 
 
@@ -108,18 +131,11 @@ def _get_contacts_data_by_page(path_info, connection, property_names):
         has_more_pages = contacts_data['has-more']
 
 
-def _convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds):
-    timestamp_milliseconds = int(timestamp_milliseconds)
-    time_since_epoch = timedelta(milliseconds=timestamp_milliseconds)
-    timestamp_as_datetime = _EPOCH_DATETIME + time_since_epoch
-    return timestamp_as_datetime
-
-
 _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
     lambda: unicode,
     {
         BooleanProperty: json_deserialize,
-        DatetimeProperty: _convert_timestamp_in_milliseconds_to_datetime,
+        DatetimeProperty: convert_timestamp_in_milliseconds_to_datetime,
         NumberProperty: Decimal,
         },
     )
