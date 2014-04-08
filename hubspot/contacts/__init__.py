@@ -22,6 +22,8 @@ from json import loads as json_deserialize
 
 from pyrecord import Record
 
+from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
 from hubspot.contacts.generic_utils import ipaginate
 from hubspot.contacts.properties import BooleanProperty
@@ -39,12 +41,6 @@ Contact = Record.create_type(
     'properties',
     'sub_contacts',
     )
-
-
-_HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
-
-
-_HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
 
 
 _EPOCH_DATETIME = datetime(1970, 1, 1)
@@ -88,7 +84,7 @@ def _get_contacts_from_all_pages(path_info, connection, property_names):
 
 
 def _get_contacts_data_by_page(path_info, connection, property_names):
-    base_query_string_args = {'count': _HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
+    base_query_string_args = {'count': HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
     if property_names:
         base_query_string_args['property'] = property_names
     has_more_pages = True
@@ -176,7 +172,7 @@ def save_contacts(contacts, connection):
     property_type_by_property_name = \
         _get_property_type_by_property_name(connection)
 
-    contacts_batches = ipaginate(contacts, _HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+    contacts_batches = ipaginate(contacts, HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
     for contacts_batch in contacts_batches:
         contacts_batch_data = format_contacts_data_for_saving(
             contacts_batch,

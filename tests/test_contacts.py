@@ -20,23 +20,27 @@ from abc import abstractproperty
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
-from functools import partial
-from hubspot.connection.testing import ConstantResponseDataMaker
-from hubspot.connection.testing import MockPortalConnection
-from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_dict_contains_subset
 from nose.tools import assert_in
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
 
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from hubspot.contacts import Contact
-from hubspot.contacts import _HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
+from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
+from hubspot.contacts.testing import AllContactsRetrievalResponseDataMaker
+from hubspot.contacts.testing import \
+    RecentlyUpdatedContactsRetrievalResponseDataMaker
+
 from tests.test_properties import PROPERTIES_RETRIEVAL_REMOTE_METHOD
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
@@ -47,15 +51,9 @@ from tests.test_properties import STUB_STRING_PROPERTY
 from tests.utils import BaseMethodTestCase
 from tests.utils.contact import make_contact
 from tests.utils.contact import make_contacts
-from tests.utils.response_data_formatters.contacts_retrieval import \
-    STUB_TIMESTAMP
-from tests.utils.response_data_formatters.contacts_retrieval import \
-    format_data_from_all_contacts_by_last_update_retrieval
-from tests.utils.response_data_formatters.contacts_retrieval import \
-    format_data_from_all_contacts_retrieval
 
 
-_HUBSPOT_DEFAULT_PAGE_SIZE = 100
+_STUB_TIMESTAMP = 12345
 
 
 class _BaseContactsTestCase(BaseMethodTestCase):
@@ -77,7 +75,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     _RETRIEVER = abstractproperty()
 
-    _RETRIEVED_DATA_FORMATTER = abstractproperty()
+    _RESPONSE_DATA_MAKER = abstractproperty()
 
     def test_no_contacts(self):
         connection = self._make_connection_for_contacts([])
@@ -89,7 +87,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         eq_(1, len(contacts_retrieval_remote_method_invocations))
 
     def test_not_exceeding_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE - 1
+        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1
         expected_contacts = make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
@@ -150,7 +148,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
-        expected_contacts = make_contacts(_HUBSPOT_DEFAULT_PAGE_SIZE)
+        expected_contacts = make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
         connection = self._make_connection_for_contacts(expected_contacts)
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
@@ -250,7 +248,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         property_retrieval_response_data_maker=None,
         ):
         contacts_retrieval_response_data_maker = \
-            partial(self._replicate_response_data, contacts)
+            self._RESPONSE_DATA_MAKER(contacts)
         if not property_retrieval_response_data_maker:
             property_retrieval_response_data_maker = ConstantResponseDataMaker(
                 [format_data_for_property(STUB_STRING_PROPERTY)],
@@ -261,29 +259,6 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
             )
         return connection
 
-    def _replicate_response_data(
-        self,
-        contacts,
-        query_string_args,
-        body_deserialization,
-        ):
-        last_contact_vid = query_string_args.get('vidOffset')
-        properties = query_string_args.get('property', [])
-
-        contacts_in_page = _get_contacts_in_page(
-            contacts,
-            last_contact_vid,
-            _HUBSPOT_DEFAULT_PAGE_SIZE,
-            )
-        contacts_in_page = \
-            _get_contacts_with_properties_filtered(contacts_in_page, properties)
-        contacts_in_page_data = self._RETRIEVED_DATA_FORMATTER(
-            contacts_in_page,
-            contacts,
-            _HUBSPOT_DEFAULT_PAGE_SIZE,
-            )
-        return contacts_in_page_data
-
 
 class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
 
@@ -291,11 +266,10 @@ class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
 
     _RETRIEVER = staticmethod(get_all_contacts)
 
-    _RETRIEVED_DATA_FORMATTER = \
-        staticmethod(format_data_from_all_contacts_retrieval)
+    _RESPONSE_DATA_MAKER = AllContactsRetrievalResponseDataMaker
 
     def test_exceeding_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
+        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
         expected_contacts = make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
@@ -310,40 +284,13 @@ class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
         eq_(2, len(remote_method_invocation2.query_string_args))
 
         assert_in('vidOffset', remote_method_invocation2.query_string_args)
-        page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
+        page1_last_contact = \
+            expected_contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
         expect_vid_offset = page1_last_contact.vid
         eq_(
             expect_vid_offset,
             remote_method_invocation2.query_string_args['vidOffset'],
             )
-
-
-def _get_contacts_in_page(contacts, last_contact_vid, page_size):
-    start_index = 0
-    if last_contact_vid:
-        for contact_index, contact in enumerate(contacts):
-            if contact.vid == last_contact_vid:
-                start_index = contact_index + 1
-                break
-    end_index = start_index + page_size
-    contacts_in_page = contacts[start_index:end_index]
-    return contacts_in_page
-
-
-def _get_contacts_with_properties_filtered(contacts, properties):
-    if not properties:
-        return contacts
-
-    contacts_with_properties_filtered = []
-    for contact in contacts:
-        contact_with_properties_filtered = contact.copy()
-        contact_with_properties_filtered.properties = \
-            {k: v for k, v in contact.properties.items() if k in properties}
-
-        contacts_with_properties_filtered. \
-            append(contact_with_properties_filtered)
-
-    return contacts_with_properties_filtered
 
 
 class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
@@ -353,11 +300,10 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
 
     _RETRIEVER = staticmethod(get_all_contacts_by_last_update)
 
-    _RETRIEVED_DATA_FORMATTER = \
-        staticmethod(format_data_from_all_contacts_by_last_update_retrieval)
+    _RESPONSE_DATA_MAKER = RecentlyUpdatedContactsRetrievalResponseDataMaker
 
     def test_exceeding_pagination_size(self):
-        contacts_count = _HUBSPOT_DEFAULT_PAGE_SIZE + 1
+        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
         expected_contacts = make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
@@ -371,10 +317,11 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             contacts_retrieval_remote_method_invocations[1]
         eq_(3, len(remote_method_invocation2.query_string_args))
 
-        page1_last_contact = expected_contacts[_HUBSPOT_DEFAULT_PAGE_SIZE - 1]
+        page1_last_contact = \
+            expected_contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
         expected_query_string_args = {
             'vidOffset': page1_last_contact.vid,
-            'timeOffset': STUB_TIMESTAMP,
+            'timeOffset': _STUB_TIMESTAMP,
             }
         assert_dict_contains_subset(
             expected_query_string_args,
@@ -407,7 +354,7 @@ class TestSavingContacts(_BaseContactsTestCase):
         eq_(0, len(remote_method_invocations))
 
     def test_without_exceeding_batch_size_limit(self):
-        contacts = make_contacts(_HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
 
         contacts_generator = iter(contacts)
         save_contacts(contacts_generator, self.connection)
@@ -422,7 +369,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             )
 
     def test_exceeding_batch_size_limit(self):
-        contacts = make_contacts(_HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
+        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
 
         contacts_generator = iter(contacts)
         save_contacts(contacts_generator, self.connection)
@@ -431,14 +378,14 @@ class TestSavingContacts(_BaseContactsTestCase):
             self._get_remote_method_invocations(self.connection)
         eq_(2, len(remote_method_invocations))
 
-        contacts1 = contacts[:_HUBSPOT_BATCH_SAVING_SIZE_LIMIT]
+        contacts1 = contacts[:HUBSPOT_BATCH_SAVING_SIZE_LIMIT]
         remote_method_invocation1 = remote_method_invocations[0]
         self._assert_contacts_sent_in_request(
             contacts1,
             remote_method_invocation1,
             )
 
-        contacts2 = contacts[_HUBSPOT_BATCH_SAVING_SIZE_LIMIT:]
+        contacts2 = contacts[HUBSPOT_BATCH_SAVING_SIZE_LIMIT:]
         remote_method_invocation2 = remote_method_invocations[1]
         self._assert_contacts_sent_in_request(
             contacts2,
@@ -446,7 +393,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             )
 
     def test_contacts_as_a_list(self):
-        contacts = make_contacts(_HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
 
         save_contacts(contacts, self.connection)
 

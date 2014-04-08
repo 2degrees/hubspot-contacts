@@ -44,6 +44,10 @@ def _get_next_page_iterable_as_list(iterable, page_size):
     return next_page_iterable
 
 
+def paginate(iterable, page_size):
+    return list(ipaginate(iterable, page_size))
+
+
 def convert_date_to_timestamp_in_milliseconds(datetime_or_date):
     timestamp = _convert_datetime_to_timestamp(datetime_or_date)
     date_timestamp_in_milliseconds = int(timestamp * 1000)
