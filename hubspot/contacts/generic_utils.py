@@ -16,6 +16,7 @@
 
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from inspect import isgenerator
 from itertools import islice
 
@@ -42,6 +43,13 @@ def ipaginate(iterable, page_size):
 def _get_next_page_iterable_as_list(iterable, page_size):
     next_page_iterable = list(islice(iterable, page_size))
     return next_page_iterable
+
+
+def convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds):
+    timestamp_milliseconds = int(timestamp_milliseconds)
+    time_since_epoch = timedelta(milliseconds=timestamp_milliseconds)
+    timestamp_as_datetime = _EPOCH_DATETIME + time_since_epoch
+    return timestamp_as_datetime
 
 
 def convert_date_to_timestamp_in_milliseconds(datetime_or_date):

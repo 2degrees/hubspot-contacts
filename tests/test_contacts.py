@@ -19,6 +19,7 @@ from abc import abstractmethod
 from abc import abstractproperty
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from functools import partial
 from hubspot.connection.testing import ConstantResponseDataMaker
@@ -35,6 +36,8 @@ from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
 from hubspot.contacts.exc import HubspotPropertyValueError
+from hubspot.contacts.generic_utils import \
+    convert_timestamp_in_milliseconds_to_datetime
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
 from tests.test_properties import PROPERTIES_RETRIEVAL_REMOTE_METHOD
@@ -389,6 +392,30 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
 
         self._assert_retrieved_contacts_match(two_contacts, connection)
 
+    def test_cutoff_single_page(self):
+        self._check_cutoff_positioning(5, 10)
+
+    def test_cutoff_multiple_page_cutoff_on_first_page(self):
+        self._check_cutoff_positioning(5, 150)
+
+    def test_cutoff_multiple_page_cutoff_on_subsequent_page(self):
+        self._check_cutoff_positioning(102, 150)
+
+    def _check_cutoff_positioning(self, cutoff_index, contact_count):
+        stub_datetime = \
+            convert_timestamp_in_milliseconds_to_datetime(STUB_TIMESTAMP)
+        cutoff_datetime = stub_datetime - timedelta(milliseconds=cutoff_index)
+
+        expected_contacts = make_contacts(contact_count)
+
+        connection = self._make_connection_for_contacts(expected_contacts)
+
+        retrieved_contacts = \
+            self._RETRIEVER(connection, cutoff_datetime=cutoff_datetime)
+        retrieved_contacts = list(retrieved_contacts)
+
+        expected_number_of_contacts = cutoff_index + 1
+        eq_(expected_number_of_contacts, len(retrieved_contacts))
 
 class TestSavingContacts(_BaseContactsTestCase):
 

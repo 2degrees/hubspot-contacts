@@ -43,8 +43,12 @@ def format_data_from_all_contacts_retrieval(
     page_last_contact = page_contacts[-1] if page_contacts else None
     page_last_contact_vid = page_last_contact.vid if page_last_contact else 0
 
-    page_contacts_data = \
-        _format_contacts_as_data_from_all_contacts_retrieval(page_contacts)
+    first_contact_offset_index = page_size * (page_number - 1)
+
+    page_contacts_data = _format_contacts_as_data_from_all_contacts_retrieval(
+        page_contacts,
+        first_contact_offset_index,
+        )
 
     return {
         'contacts': page_contacts_data,
@@ -67,14 +71,20 @@ def format_data_from_all_contacts_by_last_update_retrieval(
     return retrieval_data
 
 
-def _format_contacts_as_data_from_all_contacts_retrieval(all_contacts):
+def _format_contacts_as_data_from_all_contacts_retrieval(
+    all_contacts,
+    first_contact_added_at_offset,
+    ):
     contacts_data = []
-    for contact in all_contacts:
+    for added_at_offset, contact in enumerate(all_contacts):
+        added_at_timestamp = \
+            STUB_TIMESTAMP - first_contact_added_at_offset - added_at_offset
         contact_data = {
             'vid': contact.vid,
             'canonical-vid': contact.vid,
             'properties': _format_contact_properties_data(contact.properties),
             'identity-profiles': _format_contact_profiles_data(contact),
+            'addedAt': added_at_timestamp,
             }
         contacts_data.append(contact_data)
 
