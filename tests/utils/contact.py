@@ -15,8 +15,7 @@
 ##############################################################################
 
 from hubspot.contacts import Contact
-
-from tests.utils.generic import get_uuid4_str
+from hubspot.contacts.generic_utils import get_uuid4_str
 
 
 def make_contacts(count):

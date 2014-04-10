@@ -19,6 +19,7 @@ from datetime import datetime
 from datetime import timedelta
 from inspect import isgenerator
 from itertools import islice
+from uuid import uuid4 as get_uuid4
 
 from hubspot.contacts.exc import HubspotPropertyValueError
 
@@ -75,3 +76,8 @@ def _convert_datetime_to_timestamp(datetime_or_date):
     time_since_epoch = datetime_or_date - epoch
     timestamp = time_since_epoch.total_seconds()
     return timestamp
+
+
+def get_uuid4_str():
+    uuid4 = get_uuid4()
+    return str(uuid4)

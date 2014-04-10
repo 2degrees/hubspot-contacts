@@ -29,9 +29,8 @@ from hubspot.connection.testing import NULL_RESPONSE_DATA_MAKER
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
+from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.generic_utils import paginate
-
-from tests.utils.generic import get_uuid4_str
 
 
 _STUB_TIMESTAMP = 12345

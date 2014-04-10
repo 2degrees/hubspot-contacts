@@ -25,6 +25,7 @@ from nose.tools import assert_raises
 from nose.tools import eq_
 from voluptuous import MultipleInvalid
 
+from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import EnumerationProperty
@@ -38,7 +39,6 @@ from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
 
 from tests.utils import BaseMethodTestCase
-from tests.utils.generic import get_uuid4_str
 from tests.utils.response_data_formatters.properties_retrieval import \
     replicate_get_all_properties_response_data
 

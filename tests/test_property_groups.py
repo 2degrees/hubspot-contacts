@@ -23,6 +23,7 @@ from nose.tools import assert_not_in
 from nose.tools import assert_raises
 from nose.tools import eq_
 
+from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
@@ -30,7 +31,6 @@ from hubspot.contacts.property_groups import create_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
 
 from tests.utils import BaseMethodTestCase
-from tests.utils.generic import get_uuid4_str
 
 
 class TestPropertyGroupCreation(BaseMethodTestCase):
