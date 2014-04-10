@@ -14,16 +14,15 @@
 #
 ##############################################################################
 
-from functools import partial
+from nose.tools import assert_in
+from nose.tools import assert_raises
+from nose.tools import eq_
 
+from voluptuous import MultipleInvalid
 from hubspot.connection.exc import HubspotClientError
 from hubspot.connection.testing import ConstantResponseDataMaker
 from hubspot.connection.testing import MockPortalConnection
 from hubspot.connection.testing import RemoteMethod
-from nose.tools import assert_in
-from nose.tools import assert_raises
-from nose.tools import eq_
-from voluptuous import MultipleInvalid
 
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import BooleanProperty
@@ -37,10 +36,10 @@ from hubspot.contacts.properties import delete_property
 from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
+from hubspot.contacts.testing import AllPropertiesRetrievalResponseDataMaker
+from hubspot.contacts.testing import PropertyCreationRetrievalResponseDataMaker
 
 from tests.utils import BaseMethodTestCase
-from tests.utils.response_data_formatters.properties_retrieval import \
-    replicate_get_all_properties_response_data
 
 
 STUB_PROPERTY = Property(
@@ -89,10 +88,8 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
     def test_multiple_properties(self):
         properties = [STUB_BOOLEAN_PROPERTY, STUB_DATETIME_PROPERTY]
-        response_data_maker = partial(
-            replicate_get_all_properties_response_data,
-            properties,
-            )
+        response_data_maker = \
+            AllPropertiesRetrievalResponseDataMaker(properties)
         response_data_maker_by_remote_method = \
             {self._REMOTE_METHOD: response_data_maker}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
@@ -122,7 +119,7 @@ class TestGettingAllProperties(BaseMethodTestCase):
 
     def _check_property_retrieval(self, property_):
         response_data_maker = \
-            partial(replicate_get_all_properties_response_data, [property_])
+            AllPropertiesRetrievalResponseDataMaker([property_])
         response_data_maker_by_remote_method = \
             {self._REMOTE_METHOD: response_data_maker}
         connection = MockPortalConnection(response_data_maker_by_remote_method)
@@ -183,8 +180,10 @@ class TestCreatingProperty(BaseMethodTestCase):
     def _check_create_property(cls, property_, expected_property):
         property_data = format_data_for_property(property_)
 
-        response_data_maker_by_remote_method = \
-            {cls._REMOTE_METHOD: ConstantResponseDataMaker(property_data)}
+        response_data_maker_by_remote_method = {
+            cls._REMOTE_METHOD:
+                PropertyCreationRetrievalResponseDataMaker(property_),
+            }
         connection = MockPortalConnection(response_data_maker_by_remote_method)
         created_property = create_property(property_, connection)
 

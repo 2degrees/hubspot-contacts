@@ -38,9 +38,8 @@ from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_datetime
-from hubspot.contacts.request_data_formatters.properties import \
-    format_data_for_property
 from hubspot.contacts.testing import AllContactsRetrievalResponseDataMaker
+from hubspot.contacts.testing import AllPropertiesRetrievalResponseDataMaker
 from hubspot.contacts.testing import CONTACT_SAVING_RESPONSE_DATA_MAKER
 from hubspot.contacts.testing import \
     RecentlyUpdatedContactsRetrievalResponseDataMaker
@@ -219,9 +218,8 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         ):
         contact = \
             make_contact(1, {property_definition.name: property_value_raw})
-        property_retrieval_response_data_maker = ConstantResponseDataMaker(
-            [format_data_for_property(property_definition)],
-            )
+        property_retrieval_response_data_maker = \
+            AllPropertiesRetrievalResponseDataMaker([property_definition])
         connection = self._make_connection_for_contacts(
             [contact],
             property_retrieval_response_data_maker,
@@ -254,9 +252,9 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         contacts_retrieval_response_data_maker = \
             self._RESPONSE_DATA_MAKER(contacts)
         if not property_retrieval_response_data_maker:
-            property_retrieval_response_data_maker = ConstantResponseDataMaker(
-                [format_data_for_property(STUB_STRING_PROPERTY)],
-                )
+            property_retrieval_response_data_maker = \
+                AllPropertiesRetrievalResponseDataMaker([STUB_STRING_PROPERTY])
+
         connection = self._make_connection(
             contacts_retrieval_response_data_maker,
             property_retrieval_response_data_maker,
@@ -535,9 +533,8 @@ class TestSavingContacts(_BaseContactsTestCase):
             save_contacts([contact], connection)
 
     def _make_connection_for_property_definition(self, property_definition):
-        property_retrieval_response_data_maker = ConstantResponseDataMaker(
-            [format_data_for_property(property_definition)],
-            )
+        property_retrieval_response_data_maker = \
+            AllPropertiesRetrievalResponseDataMaker([property_definition])
         connection = self._make_connection(
             CONTACT_SAVING_RESPONSE_DATA_MAKER,
             property_retrieval_response_data_maker,

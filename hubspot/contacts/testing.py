@@ -24,6 +24,7 @@ so doing so would mean testing the tests.
 from datetime import datetime
 from json import dumps as json_serialize
 
+from hubspot.connection.testing import ConstantResponseDataMaker
 from hubspot.connection.testing import NULL_RESPONSE_DATA_MAKER
 
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
@@ -31,6 +32,8 @@ from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.generic_utils import paginate
+from hubspot.contacts.request_data_formatters.properties import \
+    format_data_for_property
 
 
 _STUB_TIMESTAMP = 12345
@@ -167,10 +170,8 @@ class RecentlyUpdatedContactsRetrievalResponseDataMaker(
     ):
 
     def __call__(self, query_string_args, body_deserialization):
-        super_class = \
-            super(RecentlyUpdatedContactsRetrievalResponseDataMaker, self)
-        response_data = \
-            super_class.__call__(query_string_args, body_deserialization)
+        super_ = super(RecentlyUpdatedContactsRetrievalResponseDataMaker, self)
+        response_data = super_.__call__(query_string_args, body_deserialization)
 
         time_offset = query_string_args.get('timeOffset', _STUB_TIMESTAMP)
 
@@ -183,3 +184,21 @@ class RecentlyUpdatedContactsRetrievalResponseDataMaker(
 
 
 CONTACT_SAVING_RESPONSE_DATA_MAKER = NULL_RESPONSE_DATA_MAKER
+
+
+class AllPropertiesRetrievalResponseDataMaker(ConstantResponseDataMaker):
+
+    def __init__(self, properties):
+        properties_data = [format_data_for_property(p) for p in properties]
+
+        super_ = super(AllPropertiesRetrievalResponseDataMaker, self)
+        super_.__init__(properties_data)
+
+
+class PropertyCreationRetrievalResponseDataMaker(ConstantResponseDataMaker):
+
+    def __init__(self, property_):
+        property_data = format_data_for_property(property_)
+
+        super_ = super(PropertyCreationRetrievalResponseDataMaker, self)
+        super_.__init__(property_data)
