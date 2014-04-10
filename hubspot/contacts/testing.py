@@ -189,7 +189,7 @@ CONTACT_SAVING_RESPONSE_DATA_MAKER = NULL_RESPONSE_DATA_MAKER
 class AllPropertiesRetrievalResponseDataMaker(ConstantResponseDataMaker):
 
     def __init__(self, properties):
-        properties_data = [format_data_for_property(p) for p in properties]
+        properties_data = _format_data_for_properties(properties)
 
         super_ = super(AllPropertiesRetrievalResponseDataMaker, self)
         super_.__init__(properties_data)
@@ -202,3 +202,40 @@ class PropertyCreationRetrievalResponseDataMaker(ConstantResponseDataMaker):
 
         super_ = super(PropertyCreationRetrievalResponseDataMaker, self)
         super_.__init__(property_data)
+
+
+class AllPropertyGroupsRetrievalResponseDataMaker(ConstantResponseDataMaker):
+
+    def __init__(self, property_groups):
+        property_groups_data = \
+            [_format_data_for_property_group(g) for g in property_groups]
+
+        super_ = super(AllPropertyGroupsRetrievalResponseDataMaker, self)
+        super_.__init__(property_groups_data)
+
+
+class PropertyGroupCreationResponseDataMaker(ConstantResponseDataMaker):
+
+    def __init__(self, property_group):
+        property_group_data = _format_data_for_property_group(property_group)
+
+        super_ = super(PropertyGroupCreationResponseDataMaker, self)
+        super_.__init__(property_group_data)
+
+
+def _format_data_for_property_group(property_group):
+    property_group_data = {
+        'name': property_group.name,
+        'displayName': property_group.display_name or '',
+        'displayOrder': 1,
+        'portalId': 1,
+        }
+    if property_group.properties:
+        property_group_data['properties'] = \
+            _format_data_for_properties(property_group.properties)
+    return property_group_data
+
+
+def _format_data_for_properties(properties):
+    properties_data = [format_data_for_property(p) for p in properties]
+    return properties_data

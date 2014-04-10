@@ -51,6 +51,14 @@ _PROPERTY_GROUPS_RETRIEVAL_SCHEMA = Schema(
     )
 
 
+def get_all_property_groups(connection):
+    response_data = connection.send_get_request('/groups')
+    property_groups_data = _PROPERTY_GROUPS_RETRIEVAL_SCHEMA(response_data)
+    property_groups = \
+        [_build_property_group_from_data(g) for g in property_groups_data]
+    return property_groups
+
+
 def create_property_group(property_group, connection):
     request_body_deserialization = {'name': property_group.name}
     if property_group.display_name:
@@ -65,14 +73,6 @@ def create_property_group(property_group, connection):
     created_property_group = \
         _build_property_group_from_data(property_group_data)
     return created_property_group
-
-
-def get_all_property_groups(connection):
-    response_data = connection.send_get_request('/groups')
-    property_groups_data = _PROPERTY_GROUPS_RETRIEVAL_SCHEMA(response_data)
-    property_groups = \
-        [_build_property_group_from_data(g) for g in property_groups_data]
-    return property_groups
 
 
 def _build_property_group_from_data(property_group_data):

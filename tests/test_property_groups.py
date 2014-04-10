@@ -14,14 +14,14 @@
 #
 ##############################################################################
 
-from hubspot.connection.exc import HubspotClientError
-from hubspot.connection.testing import ConstantResponseDataMaker
-from hubspot.connection.testing import MockPortalConnection
-from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_in
 from nose.tools import assert_not_in
 from nose.tools import assert_raises
 from nose.tools import eq_
+
+from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import DatetimeProperty
@@ -29,6 +29,8 @@ from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
 from hubspot.contacts.property_groups import create_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
+from hubspot.contacts.testing import AllPropertyGroupsRetrievalResponseDataMaker
+from hubspot.contacts.testing import PropertyGroupCreationResponseDataMaker
 
 from tests.utils import BaseMethodTestCase
 
@@ -87,7 +89,8 @@ class TestPropertyGroupCreation(BaseMethodTestCase):
 
     def _create_property_group(self, property_group):
         response_data_maker_by_remote_method = {
-            self._REMOTE_METHOD: _replicate_create_property_group_response_data,
+            self._REMOTE_METHOD: \
+                PropertyGroupCreationResponseDataMaker(property_group),
             }
         connection = MockPortalConnection(response_data_maker_by_remote_method)
 
@@ -100,19 +103,6 @@ class TestPropertyGroupCreation(BaseMethodTestCase):
         remote_method_invocation = connection.remote_method_invocations[0]
 
         return remote_method_invocation, created_property_group
-
-
-def _replicate_create_property_group_response_data(
-    remote_method,
-    body_deserialization,
-    ):
-    response_data = {
-        'name': body_deserialization['name'],
-        'displayName': body_deserialization.get('displayName', ''),
-        'displayOrder': 1,
-        'portalId': 1,
-        }
-    return response_data
 
 
 def _replicate_create_property_group_error_response(
@@ -130,92 +120,52 @@ class TestGettingAllPropertyGroups(BaseMethodTestCase):
 
     _REMOTE_METHOD = RemoteMethod('/groups', 'GET')
 
-    _PROPERTY_GROUP_DATA = [
-        {
-            'name': 'groupa',
-            'displayName': 'Group A',
-            'properties': [
-                {
-                    'name': 'lastmodifieddate',
-                    'type': 'datetime',
-                    'label': '',
-                    'description': '',
-                    'fieldType': '',
-                    'options': [],
-                    'groupName': 'groupa',
-                    },
-                ],
-            },
-        {
-            'name': 'groupb',
-            'displayName': 'Group B',
-            'properties': [
-                {
-                    'name': 'twitterhandle',
-                    'type': 'string',
-                    'label': '',
-                    'description': '',
-                    'fieldType': '',
-                    'options': [],
-                    'groupName': 'groupb',
-                    },
-                ],
-            },
-        ]
+    _STUB_PROPERTY = DatetimeProperty('lastmodifieddate', '', '', 'groupa', '')
 
     def test_no_property_groups(self):
-        response_data_maker_by_remote_method = \
-            {self._REMOTE_METHOD: ConstantResponseDataMaker([])}
-        connection = MockPortalConnection(response_data_maker_by_remote_method)
+        self._test_retrieved_property_group_equal([])
 
-        retrieved_property_groups = get_all_property_groups(connection)
-        eq_(0, len(retrieved_property_groups))
-
-        self._assert_expected_remote_method_used(connection)
+    def test_property_groups_without_display_name(self):
+        property_group = PropertyGroup('groupa', '', [self._STUB_PROPERTY])
+        self._test_retrieved_property_group_equal([property_group])
 
     def test_property_groups_without_properties(self):
-        property_group_data = self._PROPERTY_GROUP_DATA[0].copy()
-        del property_group_data['properties']
-
-        response_data_maker = ConstantResponseDataMaker([property_group_data])
-        response_data_maker_by_remote_method = \
-            {self._REMOTE_METHOD: response_data_maker}
-        connection = MockPortalConnection(response_data_maker_by_remote_method)
-
-        retrieved_property_groups = get_all_property_groups(connection)
-
-        expected_property_groups = [PropertyGroup('groupa', 'Group A')]
-        eq_(expected_property_groups, retrieved_property_groups)
-
-        self._assert_expected_remote_method_used(connection)
+        property_group = PropertyGroup('groupa', 'Group A')
+        self._test_retrieved_property_group_equal([property_group])
 
     def test_multiple_property_groups(self):
-        response_data_maker_by_remote_method = \
-            {self._REMOTE_METHOD: self._replicate_get_property_groups}
-        connection = MockPortalConnection(response_data_maker_by_remote_method)
-
-        retrieved_property_groups = get_all_property_groups(connection)
-
-        expected_property_groups = [
-            PropertyGroup(
-                'groupa',
-                'Group A',
-                [DatetimeProperty('lastmodifieddate', '', '', 'groupa', '')],
-                ),
+        property_groups = [
+            PropertyGroup('groupa', 'Group A', [self._STUB_PROPERTY]),
             PropertyGroup(
                 'groupb',
                 'Group B',
                 [StringProperty('twitterhandle', '', '', 'groupb', '')],
                 ),
             ]
+        self._test_retrieved_property_group_equal(property_groups)
+
+    def _test_retrieved_property_group_equal(self, property_groups):
+        connection = self._make_connection_for_property_groups(property_groups)
+        self._assert_retrieved_property_groups_match(
+            property_groups,
+            connection,
+            )
+
+    def _make_connection_for_property_groups(self, property_groups):
+        response_data_maker = \
+            AllPropertyGroupsRetrievalResponseDataMaker(property_groups)
+        response_data_maker_by_remote_method = \
+            {self._REMOTE_METHOD: response_data_maker}
+        connection = MockPortalConnection(response_data_maker_by_remote_method)
+        return connection
+
+    def _assert_retrieved_property_groups_match(
+        self,
+        expected_property_groups,
+        connection,
+        ):
+        retrieved_property_groups = get_all_property_groups(connection)
+
         eq_(expected_property_groups, retrieved_property_groups)
 
         self._assert_expected_remote_method_used(connection)
-
-    @classmethod
-    def _replicate_get_property_groups(
-        cls,
-        remote_method,
-        body_deserialization,
-        ):
-        return cls._PROPERTY_GROUP_DATA
