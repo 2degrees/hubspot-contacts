@@ -41,6 +41,7 @@ from hubspot.contacts.generic_utils import \
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
 from hubspot.contacts.testing import AllContactsRetrievalResponseDataMaker
+from hubspot.contacts.testing import CONTACT_SAVING_RESPONSE_DATA_MAKER
 from hubspot.contacts.testing import \
     RecentlyUpdatedContactsRetrievalResponseDataMaker
 
@@ -538,7 +539,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             [format_data_for_property(property_definition)],
             )
         connection = self._make_connection(
-            ConstantResponseDataMaker(None),
+            CONTACT_SAVING_RESPONSE_DATA_MAKER,
             property_retrieval_response_data_maker,
             )
         return connection

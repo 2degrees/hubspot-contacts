@@ -24,6 +24,8 @@ so doing so would mean testing the tests.
 from datetime import datetime
 from json import dumps as json_serialize
 
+from hubspot.connection.testing import NULL_RESPONSE_DATA_MAKER
+
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
@@ -179,3 +181,6 @@ class RecentlyUpdatedContactsRetrievalResponseDataMaker(
 
         response_data['time-offset'] = time_offset - len(contacts_data)
         return response_data
+
+
+CONTACT_SAVING_RESPONSE_DATA_MAKER = NULL_RESPONSE_DATA_MAKER
