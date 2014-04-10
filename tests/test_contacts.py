@@ -38,6 +38,7 @@ from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_datetime
+from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.testing import AllContactsRetrievalResponseDataMaker
 from hubspot.contacts.testing import AllPropertiesRetrievalResponseDataMaker
 from hubspot.contacts.testing import CONTACT_SAVING_RESPONSE_DATA_MAKER
@@ -52,8 +53,6 @@ from tests.test_properties import STUB_NUMBER_PROPERTY
 from tests.test_properties import STUB_PROPERTY
 from tests.test_properties import STUB_STRING_PROPERTY
 from tests.utils import BaseMethodTestCase
-from tests.utils.contact import make_contact
-from tests.utils.contact import make_contacts
 
 
 _STUB_TIMESTAMP = 12345
@@ -91,7 +90,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_not_exceeding_pagination_size(self):
         contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1
-        expected_contacts = make_contacts(contacts_count)
+        expected_contacts = _make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
@@ -106,8 +105,8 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_getting_existing_properties(self):
         expected_contacts = [
-            make_contact(1, properties={STUB_PROPERTY.name: 'foo'}),
-            make_contact(
+            _make_contact(1, properties={STUB_PROPERTY.name: 'foo'}),
+            _make_contact(
                 2,
                 properties={STUB_PROPERTY.name: 'baz', 'p2': 'bar'},
                 ),
@@ -151,7 +150,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
-        expected_contacts = make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
+        expected_contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
         connection = self._make_connection_for_contacts(expected_contacts)
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
@@ -162,7 +161,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_contacts_with_sub_contacts(self):
         expected_sub_contacts = [2, 3]
-        expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
+        expected_contacts = _make_contact(1, sub_contacts=expected_sub_contacts)
         connection = self._make_connection_for_contacts([expected_contacts])
 
         retrieved_contacts = self._RETRIEVER(connection)
@@ -170,7 +169,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
 
     def test_contacts_without_sub_contacts(self):
         expected_sub_contacts = []
-        expected_contacts = make_contact(1, sub_contacts=expected_sub_contacts)
+        expected_contacts = _make_contact(1, sub_contacts=expected_sub_contacts)
         connection = self._make_connection_for_contacts([expected_contacts])
 
         retrieved_contacts = self._RETRIEVER(connection)
@@ -217,7 +216,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         property_value_raw,
         ):
         contact = \
-            make_contact(1, {property_definition.name: property_value_raw})
+            _make_contact(1, {property_definition.name: property_value_raw})
         property_retrieval_response_data_maker = \
             AllPropertiesRetrievalResponseDataMaker([property_definition])
         connection = self._make_connection_for_contacts(
@@ -233,7 +232,7 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         return retrieved_contact
 
     def test_property_type_casting_for_unknown_property(self):
-        contact = make_contact(1, {'p1': 'yes'})
+        contact = _make_contact(1, {'p1': 'yes'})
         connection = self._make_connection_for_contacts([contact])
 
         retrieved_contacts = self._RETRIEVER(connection)
@@ -272,7 +271,7 @@ class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
 
     def test_exceeding_pagination_size(self):
         contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
-        expected_contacts = make_contacts(contacts_count)
+        expected_contacts = _make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
@@ -306,7 +305,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
 
     def test_exceeding_pagination_size(self):
         contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
-        expected_contacts = make_contacts(contacts_count)
+        expected_contacts = _make_contacts(contacts_count)
         connection = self._make_connection_for_contacts(expected_contacts)
 
         self._assert_retrieved_contacts_match(expected_contacts, connection)
@@ -333,7 +332,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             )
 
     def test_duplicated_contacts(self):
-        two_contacts = make_contacts(2)
+        two_contacts = _make_contacts(2)
         expected_contacts = two_contacts + two_contacts[:1]
 
         connection = self._make_connection_for_contacts(expected_contacts)
@@ -354,7 +353,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             convert_timestamp_in_milliseconds_to_datetime(_STUB_TIMESTAMP)
         cutoff_datetime = stub_datetime - timedelta(milliseconds=cutoff_index)
 
-        expected_contacts = make_contacts(contact_count)
+        expected_contacts = _make_contacts(contact_count)
 
         connection = self._make_connection_for_contacts(expected_contacts)
 
@@ -383,7 +382,7 @@ class TestSavingContacts(_BaseContactsTestCase):
         eq_(0, len(remote_method_invocations))
 
     def test_without_exceeding_batch_size_limit(self):
-        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
 
         contacts_generator = iter(contacts)
         save_contacts(contacts_generator, self.connection)
@@ -398,7 +397,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             )
 
     def test_exceeding_batch_size_limit(self):
-        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
+        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
 
         contacts_generator = iter(contacts)
         save_contacts(contacts_generator, self.connection)
@@ -422,7 +421,7 @@ class TestSavingContacts(_BaseContactsTestCase):
             )
 
     def test_contacts_as_a_list(self):
-        contacts = make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
 
         save_contacts(contacts, self.connection)
 
@@ -440,7 +439,7 @@ class TestSavingContacts(_BaseContactsTestCase):
 
     def test_property_values_in_request(self):
         property_value = 'true'
-        contact = make_contact(1, {STUB_STRING_PROPERTY.name: property_value})
+        contact = _make_contact(1, {STUB_STRING_PROPERTY.name: property_value})
         connection = \
             self._make_connection_for_property_definition(STUB_STRING_PROPERTY)
 
@@ -490,7 +489,7 @@ class TestSavingContacts(_BaseContactsTestCase):
         original_value,
         expected_cast_value,
         ):
-        contact = make_contact(1, {property_definition.name: original_value})
+        contact = _make_contact(1, {property_definition.name: original_value})
         connection = \
             self._make_connection_for_property_definition(property_definition)
 
@@ -525,7 +524,7 @@ class TestSavingContacts(_BaseContactsTestCase):
         property_value,
         exc_message_template,
         ):
-        contact = make_contact(1, {property_.name: property_value})
+        contact = _make_contact(1, {property_.name: property_value})
         connection = self._make_connection_for_property_definition(property_)
 
         exc_message = exc_message_template.format(repr(property_value))
@@ -572,3 +571,25 @@ def _format_contact_properties_for_saving(contact_properties):
         {'property': n, 'value': v} for n, v in contact_properties.items()
         ]
     return contact_properties_data
+
+
+def _make_contacts(count):
+    contacts = []
+    for contact_vid in range(1, count + 1):
+        contact = _make_contact(contact_vid)
+        contacts.append(contact)
+    return contacts
+
+
+def _make_contact(vid, properties=None, sub_contacts=None):
+    properties = properties or {}
+    sub_contacts = sub_contacts or []
+    email_address = _get_random_email_address()
+    contact = Contact(vid, email_address, properties, sub_contacts)
+    return contact
+
+
+def _get_random_email_address():
+    email_user_name = get_uuid4_str()
+    email_address = email_user_name + '@example.com'
+    return email_address
