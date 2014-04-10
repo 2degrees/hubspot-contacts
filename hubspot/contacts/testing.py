@@ -239,3 +239,6 @@ def _format_data_for_property_group(property_group):
 def _format_data_for_properties(properties):
     properties_data = [format_data_for_property(p) for p in properties]
     return properties_data
+
+
+PROPERTY_DELETION_RESPONSE_DATA_MAKER = NULL_RESPONSE_DATA_MAKER

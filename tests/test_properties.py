@@ -14,15 +14,14 @@
 #
 ##############################################################################
 
-from nose.tools import assert_in
-from nose.tools import assert_raises
-from nose.tools import eq_
-
-from voluptuous import MultipleInvalid
 from hubspot.connection.exc import HubspotClientError
 from hubspot.connection.testing import ConstantResponseDataMaker
 from hubspot.connection.testing import MockPortalConnection
 from hubspot.connection.testing import RemoteMethod
+from nose.tools import assert_in
+from nose.tools import assert_raises
+from nose.tools import eq_
+from voluptuous import MultipleInvalid
 
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import BooleanProperty
@@ -37,6 +36,7 @@ from hubspot.contacts.properties import get_all_properties
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
 from hubspot.contacts.testing import AllPropertiesRetrievalResponseDataMaker
+from hubspot.contacts.testing import PROPERTY_DELETION_RESPONSE_DATA_MAKER
 from hubspot.contacts.testing import PropertyCreationRetrievalResponseDataMaker
 
 from tests.utils import BaseMethodTestCase
@@ -223,7 +223,9 @@ class TestPropertyDeletion(BaseMethodTestCase):
     _REMOTE_METHOD = RemoteMethod('/properties/' + _PROPERTY_NAME, 'DELETE')
 
     def test_existing_mutable_property(self):
-        connection = MockPortalConnection()
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: PROPERTY_DELETION_RESPONSE_DATA_MAKER,
+            })
         delete_property(self._PROPERTY_NAME, connection)
 
         self._assert_expected_remote_method_used(connection)
