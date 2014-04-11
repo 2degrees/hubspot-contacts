@@ -22,6 +22,7 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from nose.tools import assert_dict_contains_subset
+from nose.tools import assert_false
 from nose.tools import assert_in
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
@@ -159,21 +160,26 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
             connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
         eq_(1, len(contacts_retrieval_remote_method_invocations))
 
-    def test_contacts_with_sub_contacts(self):
-        expected_sub_contacts = [2, 3]
-        expected_contacts = _make_contact(1, sub_contacts=expected_sub_contacts)
+    def test_contacts_with_related_contact_vids(self):
+        expected_related_contact_vids = [2, 3]
+        expected_contacts = \
+            _make_contact(1, related_contact_vids=expected_related_contact_vids)
         connection = self._make_connection_for_contacts([expected_contacts])
 
         retrieved_contacts = self._RETRIEVER(connection)
-        eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
 
-    def test_contacts_without_sub_contacts(self):
-        expected_sub_contacts = []
-        expected_contacts = _make_contact(1, sub_contacts=expected_sub_contacts)
+        retrieved_contact = list(retrieved_contacts)[0]
+        actual_related_contact_vids = retrieved_contact.related_contact_vids
+        eq_(expected_related_contact_vids, actual_related_contact_vids)
+
+    def test_contacts_without_related_contact_vids(self):
+        expected_contacts = _make_contact(1)
         connection = self._make_connection_for_contacts([expected_contacts])
 
         retrieved_contacts = self._RETRIEVER(connection)
-        eq_(expected_sub_contacts, list(retrieved_contacts)[0].sub_contacts)
+
+        retrieved_contact = list(retrieved_contacts)[0]
+        assert_false(retrieved_contact.related_contact_vids)
 
     def _assert_retrieved_contacts_match(
         self,
@@ -581,11 +587,11 @@ def _make_contacts(count):
     return contacts
 
 
-def _make_contact(vid, properties=None, sub_contacts=None):
+def _make_contact(vid, properties=None, related_contact_vids=None):
     properties = properties or {}
-    sub_contacts = sub_contacts or []
+    related_contact_vids = related_contact_vids or []
     email_address = _get_random_email_address()
-    contact = Contact(vid, email_address, properties, sub_contacts)
+    contact = Contact(vid, email_address, properties, related_contact_vids)
     return contact
 
 

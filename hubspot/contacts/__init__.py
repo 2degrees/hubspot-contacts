@@ -42,7 +42,7 @@ Contact = Record.create_type(
     'vid',
     'email_address',
     'properties',
-    'sub_contacts',
+    'related_contact_vids',
     )
 
 
@@ -142,11 +142,12 @@ _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
 
 
 def _build_contact_from_data(contact_data, property_type_by_property_name):
-    canonical_profile_data, additional_profiles_data = \
+    canonical_profile_data, related_profiles_data = \
         _get_profiles_data_from_contact_data(contact_data)
     email_address = \
         _get_email_address_from_contact_profile_data(canonical_profile_data)
-    sub_contacts = _get_sub_contacts_from_contact_data(additional_profiles_data)
+    related_contact_vids = \
+        _get_contact_vids_from_contact_profiles_data(related_profiles_data)
 
     properties = {}
     for property_name, property_value in contact_data['properties'].items():
@@ -156,23 +157,29 @@ def _build_contact_from_data(contact_data, property_type_by_property_name):
                 _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
             properties[property_name] = converter(property_value)
 
-    return Contact(contact_data['vid'], email_address, properties, sub_contacts)
+    contact = Contact(
+        contact_data['vid'],
+        email_address,
+        properties,
+        related_contact_vids,
+        )
+    return contact
 
 
 def _get_profiles_data_from_contact_data(contact_data):
-    additional_profiles_data = []
+    related_profiles_data = []
     for related_contact_profile_data in contact_data['identity-profiles']:
         if related_contact_profile_data['vid'] == contact_data['vid']:
             canonical_profile_data = related_contact_profile_data
         else:
-            additional_profiles_data.append(related_contact_profile_data)
+            related_profiles_data.append(related_contact_profile_data)
 
-    return canonical_profile_data, additional_profiles_data
+    return canonical_profile_data, related_profiles_data
 
 
-def _get_sub_contacts_from_contact_data(contact_profiles_data):
-    sub_contacts = [profile['vid'] for profile in contact_profiles_data]
-    return sub_contacts
+def _get_contact_vids_from_contact_profiles_data(contact_profiles_data):
+    contact_vids = [profile['vid'] for profile in contact_profiles_data]
+    return contact_vids
 
 
 def _get_email_address_from_contact_profile_data(contact_profile_data):

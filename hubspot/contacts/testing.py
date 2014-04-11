@@ -139,7 +139,7 @@ def _format_contact_profiles_data(contact):
         }
     contact_profiles_data = [contact_profile_data]
 
-    for vid in contact.sub_contacts:
+    for vid in contact.related_contact_vids:
         contact_profiles_data.append({'vid': vid, 'identities': []})
 
     return contact_profiles_data
