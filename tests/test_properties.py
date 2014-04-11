@@ -222,7 +222,7 @@ class TestPropertyDeletion(BaseMethodTestCase):
 
     _REMOTE_METHOD = RemoteMethod('/properties/' + _PROPERTY_NAME, 'DELETE')
 
-    def test_existing_mutable_property(self):
+    def test_existing_deletable_property(self):
         connection = MockPortalConnection({
             self._REMOTE_METHOD: PROPERTY_DELETION_RESPONSE_DATA_MAKER,
             })
