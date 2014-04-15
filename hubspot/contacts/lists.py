@@ -27,6 +27,15 @@ ContactList = Record.create_type(
     )
 
 
+def create_static_contact_list(contact_list_name, connection):
+    contact_list_data = connection.send_post_request(
+        '/contacts/v1/lists',
+        {'name': contact_list_name, 'dynamic': False},
+        )
+    contact_list = _build_contact_list_from_data(contact_list_data)
+    return contact_list
+
+
 def get_all_contact_lists(connection):
     data_retriever = PaginatedDataRetriever('lists', ['offset'])
     contact_lists_data = data_retriever.get_data(
@@ -39,9 +48,14 @@ def get_all_contact_lists(connection):
 
 def _build_contact_lists_from_data(contact_lists_data):
     for contact_list_data in contact_lists_data:
-        contact_list = ContactList(
-            contact_list_data['listId'],
-            contact_list_data['name'],
-            contact_list_data['dynamic'],
-            )
+        contact_list = _build_contact_list_from_data(contact_list_data)
         yield contact_list
+
+
+def _build_contact_list_from_data(contact_list_data):
+    contact_list = ContactList(
+        contact_list_data['listId'],
+        contact_list_data['name'],
+        contact_list_data['dynamic'],
+        )
+    return contact_list

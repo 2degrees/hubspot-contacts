@@ -16,15 +16,17 @@
 
 from inspect import isgenerator
 
-from hubspot.connection.testing import ConstantResponseDataMaker
-from hubspot.connection.testing import MockPortalConnection
-from hubspot.connection.testing import RemoteMethod
+from nose.tools import assert_raises
 from nose.tools import eq_
 from nose.tools import ok_
 
+from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from hubspot.contacts.lists import ContactList
+from hubspot.contacts.lists import create_static_contact_list
 from hubspot.contacts.lists import get_all_contact_lists
-
 from tests.utils import BaseMethodTestCase
 
 
@@ -82,3 +84,46 @@ class TestContactListsRetrieval(BaseMethodTestCase):
             self._REMOTE_METHOD: ConstantResponseDataMaker(response_data),
             })
         return connection
+
+
+class TestStaticContactListCreation(BaseMethodTestCase):
+
+    _REMOTE_METHOD = RemoteMethod('/contacts/v1/lists', 'POST')
+
+    def test_name_doesnt_exist(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: ConstantResponseDataMaker(
+                _MOCK_CONTACT_LIST_DATA,
+                ),
+            })
+
+        contact_list = create_static_contact_list(
+            _MOCK_CONTACT_LIST.name,
+            connection,
+            )
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+        expected_body_deserialization = \
+            {'name': _MOCK_CONTACT_LIST.name, 'dynamic': False}
+        body_deserialization = \
+            connection.remote_method_invocations[0].body_deserialization
+        eq_(expected_body_deserialization, body_deserialization)
+
+        eq_(_MOCK_CONTACT_LIST, contact_list)
+
+    def test_name_already_exists(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: _raise_hubspot_client_error,
+            })
+
+        with assert_raises(HubspotClientError):
+            create_static_contact_list(_MOCK_CONTACT_LIST.name, connection)
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+
+def _raise_hubspot_client_error(query_string_args, body_deserialization):
+    raise HubspotClientError('Empty string will do', 1)
