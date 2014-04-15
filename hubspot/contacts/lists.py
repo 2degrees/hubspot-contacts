@@ -13,8 +13,8 @@
 # INFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
+
 from pyrecord import Record
-from voluptuous import Schema
 
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
 
@@ -24,17 +24,6 @@ ContactList = Record.create_type(
     'id',
     'name',
     'is_dynamic',
-    )
-
-
-CONTACT_LIST_SCHEMA = Schema(
-    {
-        'listId': int,
-        'name': unicode,
-        'dynamic': bool,
-        },
-    required=True,
-    extra=True,
     )
 
 
