@@ -13,3 +13,46 @@
 # INFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
+from pyrecord import Record
+from voluptuous import Schema
+
+from hubspot.contacts._data_retrieval import PaginatedDataRetriever
+
+
+ContactList = Record.create_type(
+    'ContactList',
+    'id',
+    'name',
+    'is_dynamic',
+    )
+
+
+CONTACT_LIST_SCHEMA = Schema(
+    {
+        'listId': int,
+        'name': unicode,
+        'dynamic': bool,
+        },
+    required=True,
+    extra=True,
+    )
+
+
+def get_all_contact_lists(connection):
+    data_retriever = PaginatedDataRetriever('lists', ['offset'])
+    contact_lists_data = data_retriever.get_data(
+        connection,
+        '/contacts/v1/lists',
+        )
+    contact_lists = _build_contact_lists_from_data(contact_lists_data)
+    return contact_lists
+
+
+def _build_contact_lists_from_data(contact_lists_data):
+    for contact_list_data in contact_lists_data:
+        contact_list = ContactList(
+            contact_list_data['listId'],
+            contact_list_data['name'],
+            contact_list_data['dynamic'],
+            )
+        yield contact_list
