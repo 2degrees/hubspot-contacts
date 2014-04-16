@@ -17,6 +17,7 @@
 from pyrecord import Record
 
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
+from hubspot.contacts._schemas.lists import CONTACT_LIST_SCHEMA
 from hubspot.contacts._schemas.lists import \
     CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA
 
@@ -55,6 +56,7 @@ def _build_contact_lists_from_data(contact_lists_data):
 
 
 def _build_contact_list_from_data(contact_list_data):
+    contact_list_data = CONTACT_LIST_SCHEMA(contact_list_data)
     contact_list = ContactList(
         contact_list_data['listId'],
         contact_list_data['name'],

@@ -88,6 +88,17 @@ class TestContactListsRetrieval(BaseMethodTestCase):
         contact_lists = get_all_contact_lists(connection)
         ok_(isgenerator(contact_lists))
 
+    def test_unexpected_response(self):
+        contact_list_data = [{'listId': 1, 'name': 'atestlist'}]
+        response_data = \
+            {'has-more': False, 'offset': 9, 'lists': contact_list_data}
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: ConstantResponseDataMaker(response_data),
+            })
+
+        with assert_raises(Invalid):
+            list(get_all_contact_lists(connection))
+
     def _make_connection_with_contact_lists(self, contact_lists):
         response_data = {'has-more': False, 'offset': 9, 'lists': contact_lists}
         connection = MockPortalConnection({
@@ -133,6 +144,15 @@ class TestStaticContactListCreation(BaseMethodTestCase):
 
         eq_(1, len(connection.remote_method_invocations))
         self._assert_expected_remote_method_used(connection)
+
+    def test_unexpected_response(self):
+        response_data = {'listId': 1, 'name': 'atestlist'}
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: ConstantResponseDataMaker(response_data),
+            })
+
+        with assert_raises(Invalid):
+            create_static_contact_list(_STUB_CONTACT_LIST.name, connection)
 
 
 class TestAddingContactsToList(BaseMethodTestCase):
