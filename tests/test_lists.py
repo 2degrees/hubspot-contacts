@@ -16,21 +16,22 @@
 
 from inspect import isgenerator
 
+from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.testing import ConstantResponseDataMaker
+from hubspot.connection.testing import MockPortalConnection
+from hubspot.connection.testing import RemoteMethod
 from nose.tools import assert_items_equal
 from nose.tools import assert_raises
 from nose.tools import eq_
 from nose.tools import ok_
 from voluptuous import Invalid
-from hubspot.connection.exc import HubspotClientError
-from hubspot.connection.testing import ConstantResponseDataMaker
-from hubspot.connection.testing import MockPortalConnection
-from hubspot.connection.testing import RemoteMethod
 
 from hubspot.contacts import Contact
 from hubspot.contacts.lists import ContactList
 from hubspot.contacts.lists import add_contacts_to_list
 from hubspot.contacts.lists import create_static_contact_list
 from hubspot.contacts.lists import get_all_contact_lists
+from hubspot.contacts.lists import remove_contacts_from_list
 
 from tests.utils import BaseMethodTestCase
 
@@ -162,7 +163,7 @@ class TestAddingContactsToList(BaseMethodTestCase):
         'POST',
         )
 
-    def test_no_contacts(self):
+    def test_no_contacts_to_add(self):
         connection = MockPortalConnection({})
 
         added_contact_vids = \
@@ -172,34 +173,49 @@ class TestAddingContactsToList(BaseMethodTestCase):
         eq_([], added_contact_vids)
 
     def test_contacts_not_in_list(self):
-        self._test_contact_addition(
+        self._test_contacts_addition(
             expected_updated_contacts=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             contacts_in_list=[],
             )
 
     def test_contacts_already_in_list(self):
-        self._test_contact_addition(
+        self._test_contacts_addition(
             expected_updated_contacts=[],
             contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             contacts_in_list=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             )
 
     def test_some_contacts_already_in_list(self):
-        self._test_contact_addition(
+        self._test_contacts_addition(
             expected_updated_contacts=[_STUB_CONTACT_2],
             contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             contacts_in_list=[_STUB_CONTACT_1],
             )
 
     def test_non_existing_contact(self):
-        self._test_contact_addition(
+        self._test_contacts_addition(
             expected_updated_contacts=[],
             contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
             contacts_in_hubspot=[],
             )
 
     def test_non_existing_list(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: _raise_hubspot_client_error,
+            })
+
+        with assert_raises(HubspotClientError):
+            add_contacts_to_list(
+                _STUB_CONTACT_LIST,
+                [_STUB_CONTACT_1, _STUB_CONTACT_2],
+                connection,
+                )
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+    def test_dynamic_contact_list(self):
         connection = MockPortalConnection({
             self._REMOTE_METHOD: _raise_hubspot_client_error,
             })
@@ -226,7 +242,7 @@ class TestAddingContactsToList(BaseMethodTestCase):
                 connection,
                 )
 
-    def _test_contact_addition(
+    def _test_contacts_addition(
         self,
         expected_updated_contacts,
         contacts_to_add,
@@ -260,6 +276,135 @@ class TestAddingContactsToList(BaseMethodTestCase):
         expected_updated_contact_vids = \
             _get_contact_vids(expected_updated_contacts)
         assert_items_equal(expected_updated_contact_vids, added_contact_vids)
+
+    def _make_connection(self, updated_contacts=None):
+        updated_contacts = _get_contact_vids(updated_contacts or [])
+        response_data = {'updated': updated_contacts}
+        response_data_maker = ConstantResponseDataMaker(response_data)
+        connection = \
+            MockPortalConnection({self._REMOTE_METHOD: response_data_maker})
+        return connection
+
+
+class TestRemovingContactsFromList(BaseMethodTestCase):
+
+    _REMOTE_METHOD = RemoteMethod(
+        '/lists/{}/remove'.format(_STUB_CONTACT_LIST.id),
+        'POST',
+        )
+
+    def test_no_contacts_to_remove(self):
+        connection = MockPortalConnection({})
+
+        removed_contact_vids = \
+            remove_contacts_from_list(_STUB_CONTACT_LIST, [], connection)
+
+        eq_(0, len(connection.remote_method_invocations))
+        eq_([], removed_contact_vids)
+
+    def test_contacts_not_in_list(self):
+        self._test_contacts_removal(
+            expected_updated_contacts=[],
+            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_in_list=[],
+            )
+
+    def test_contacts_in_list(self):
+        self._test_contacts_removal(
+            expected_updated_contacts=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_in_list=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            )
+
+    def test_some_contacts_in_list(self):
+        self._test_contacts_removal(
+            expected_updated_contacts=[_STUB_CONTACT_1],
+            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_in_list=[_STUB_CONTACT_1],
+            )
+
+    def test_non_existing_contact(self):
+        self._test_contacts_removal(
+            expected_updated_contacts=[],
+            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_in_hubspot=[],
+            )
+
+    def test_non_existing_list(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: _raise_hubspot_client_error,
+            })
+
+        with assert_raises(HubspotClientError):
+            remove_contacts_from_list(
+                _STUB_CONTACT_LIST,
+                [_STUB_CONTACT_1, _STUB_CONTACT_2],
+                connection,
+                )
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+    def test_dynamic_contact_list(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: _raise_hubspot_client_error,
+            })
+
+        with assert_raises(HubspotClientError):
+            remove_contacts_from_list(
+                _STUB_CONTACT_LIST,
+                [_STUB_CONTACT_1, _STUB_CONTACT_2],
+                connection,
+                )
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+    def test_unexpected_response(self):
+        connection = MockPortalConnection({
+            self._REMOTE_METHOD: ConstantResponseDataMaker({'update': []}),
+            })
+
+        with assert_raises(Invalid):
+            remove_contacts_from_list(
+                _STUB_CONTACT_LIST,
+                [_STUB_CONTACT_1, _STUB_CONTACT_2],
+                connection,
+                )
+
+    def _test_contacts_removal(
+        self,
+        expected_updated_contacts,
+        contacts_to_remove,
+        contacts_in_list=None,
+        contacts_in_hubspot=None,
+        ):
+        if contacts_in_list is None:
+            contacts_in_list = []
+        if contacts_in_hubspot is None:
+            contacts_in_hubspot = [_STUB_CONTACT_1, _STUB_CONTACT_2]
+
+        updated_contacts = set(contacts_in_hubspot) & set(contacts_in_list)
+        connection = self._make_connection(updated_contacts)
+
+        removed_contact_vids = remove_contacts_from_list(
+            _STUB_CONTACT_LIST,
+            contacts_to_remove,
+            connection,
+            )
+
+        eq_(1, len(connection.remote_method_invocations))
+        self._assert_expected_remote_method_used(connection)
+
+        contact_vids_to_remove = _get_contact_vids(contacts_to_remove)
+        expected_body_deserialization = {'vids': contact_vids_to_remove}
+        body_deserialization = \
+            connection.remote_method_invocations[0].body_deserialization
+        eq_(expected_body_deserialization, body_deserialization)
+
+        expected_updated_contact_vids = \
+            _get_contact_vids(expected_updated_contacts)
+        assert_items_equal(expected_updated_contact_vids, removed_contact_vids)
 
     def _make_connection(self, updated_contacts=None):
         updated_contacts = _get_contact_vids(updated_contacts or [])

@@ -63,12 +63,30 @@ def _build_contact_list_from_data(contact_list_data):
 
 
 def add_contacts_to_list(contact_list, contacts, connection):
+    updated_contact_vids = _update_contact_list_membership(
+        '/lists/{}/add'.format(contact_list.id),
+        contacts,
+        connection,
+        )
+    return updated_contact_vids
+
+
+def remove_contacts_from_list(contact_list, contacts, connection):
+    updated_contact_vids = _update_contact_list_membership(
+        '/lists/{}/remove'.format(contact_list.id),
+        contacts,
+        connection,
+        )
+    return updated_contact_vids
+
+
+def _update_contact_list_membership(endpoint_url_path, contacts, connection):
     if not contacts:
         return []
 
     contact_vids = [c.vid for c in contacts]
     response_data = connection.send_post_request(
-        '/lists/{}/add'.format(contact_list.id),
+        endpoint_url_path,
         {'vids': contact_vids},
         )
     response_data = CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA(response_data)
