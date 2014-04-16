@@ -17,6 +17,8 @@
 from pyrecord import Record
 
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
+from hubspot.contacts._schemas.lists import \
+    CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA
 
 
 ContactList = Record.create_type(
@@ -59,3 +61,18 @@ def _build_contact_list_from_data(contact_list_data):
         contact_list_data['dynamic'],
         )
     return contact_list
+
+
+def add_contacts_to_list(contact_list, contacts, connection):
+    if not contacts:
+        return []
+
+    contact_vids = [c.vid for c in contacts]
+    response_data = connection.send_post_request(
+        '/lists/{}/add'.format(contact_list.id),
+        {'vids': contact_vids},
+        )
+    response_data = CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA(response_data)
+
+    updated_contact_vids = response_data['updated']
+    return updated_contact_vids
