@@ -55,7 +55,7 @@ _STUB_CONTACT_2 = Contact(2, 'bro@bro.com', {}, [])
 
 class TestContactListsRetrieval(BaseMethodTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/contacts/v1/lists', 'GET')
+    _REMOTE_METHOD = RemoteMethod('/lists', 'GET')
 
     def test_no_contact_lists(self):
         connection = self._make_connection_with_contact_lists([])
@@ -109,7 +109,7 @@ class TestContactListsRetrieval(BaseMethodTestCase):
 
 class TestStaticContactListCreation(BaseMethodTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/contacts/v1/lists', 'POST')
+    _REMOTE_METHOD = RemoteMethod('/lists', 'POST')
 
     def test_name_doesnt_exist(self):
         connection = MockPortalConnection({
