@@ -19,6 +19,8 @@ from voluptuous import Optional
 from voluptuous import Schema
 
 from hubspot.contacts.properties import _build_property_from_data
+from hubspot.contacts.request_data_formatters.property_groups import \
+    format_data_for_property_group
 
 
 PropertyGroup = Record.create_type(
@@ -60,10 +62,8 @@ def get_all_property_groups(connection):
 
 
 def create_property_group(property_group, connection):
-    request_body_deserialization = {'name': property_group.name}
-    if property_group.display_name:
-        request_body_deserialization['displayName'] = \
-            property_group.display_name
+    request_body_deserialization = \
+        format_data_for_property_group(property_group)
 
     response_data = connection.send_put_request(
         '/groups/' + property_group.name,

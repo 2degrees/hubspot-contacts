@@ -15,21 +15,18 @@
 #
 ##############################################################################
 
+from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
-from nose.tools import assert_dict_contains_subset
-from nose.tools import assert_false
-from nose.tools import assert_in
+
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
-
-from hubspot.connection.testing import ConstantResponseDataMaker
 from hubspot.connection.testing import MockPortalConnection
-from hubspot.connection.testing import RemoteMethod
+
 from hubspot.contacts import Contact
 from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
@@ -37,159 +34,68 @@ from hubspot.contacts import save_contacts
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
-from hubspot.contacts.generic_utils import \
-    convert_timestamp_in_milliseconds_to_datetime
 from hubspot.contacts.generic_utils import get_uuid4_str
-from hubspot.contacts.testing import AllContactsRetrievalResponseDataMaker
-from hubspot.contacts.testing import AllPropertiesRetrievalResponseDataMaker
-from hubspot.contacts.testing import CONTACT_SAVING_RESPONSE_DATA_MAKER
-from hubspot.contacts.testing import \
-    RecentlyUpdatedContactsRetrievalResponseDataMaker
+from hubspot.contacts.testing import GetAllContacts
+from hubspot.contacts.testing import GetAllContactsByLastUpdate
+from hubspot.contacts.testing import SaveContacts
 
-from tests.test_properties import PROPERTIES_RETRIEVAL_REMOTE_METHOD
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
 from tests.test_properties import STUB_ENUMERATION_PROPERTY
 from tests.test_properties import STUB_NUMBER_PROPERTY
 from tests.test_properties import STUB_PROPERTY
 from tests.test_properties import STUB_STRING_PROPERTY
-from tests.utils import BaseMethodTestCase
 
 
-_STUB_TIMESTAMP = 12345
+class _BaseGettingAllContactsTestCase(object):
 
-
-class _BaseContactsTestCase(BaseMethodTestCase):
-
-    def _make_connection(
-        self,
-        remote_method_response_data_maker,
-        property_retrieval_response_data_maker,
-        ):
-        response_data_maker_by_remote_method = {
-            self._REMOTE_METHOD: remote_method_response_data_maker,
-            PROPERTIES_RETRIEVAL_REMOTE_METHOD:
-                property_retrieval_response_data_maker,
-            }
-        return MockPortalConnection(response_data_maker_by_remote_method)
-
-
-class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
+    __metaclass__ = ABCMeta
 
     _RETRIEVER = abstractproperty()
 
-    _RESPONSE_DATA_MAKER = abstractproperty()
+    _SIMULATOR_CLASS = abstractproperty()
 
     def test_no_contacts(self):
-        connection = self._make_connection_for_contacts([])
-
-        self._assert_retrieved_contacts_match([], connection)
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(1, len(contacts_retrieval_remote_method_invocations))
+        self._check_retrieved_contacts_match([], [])
 
     def test_not_exceeding_pagination_size(self):
         contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1
-        expected_contacts = _make_contacts(contacts_count)
-        connection = self._make_connection_for_contacts(expected_contacts)
-
-        self._assert_retrieved_contacts_match(expected_contacts, connection)
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(1, len(contacts_retrieval_remote_method_invocations))
+        contacts = _make_contacts(contacts_count)
+        self._check_retrieved_contacts_match(contacts, contacts)
 
     @abstractmethod
     def test_exceeding_pagination_size(self):
         pass
 
     def test_getting_existing_properties(self):
-        expected_contacts = [
+        simulator_contacts = [
             _make_contact(1, properties={STUB_PROPERTY.name: 'foo'}),
             _make_contact(
                 2,
                 properties={STUB_PROPERTY.name: 'baz', 'p2': 'bar'},
                 ),
             ]
-        connection = self._make_connection_for_contacts(expected_contacts)
 
-        expected_contacts_with_expected_properties = []
-        for original_contact in expected_contacts:
-            expected_contact_with_expected_properties = Contact(
-                original_contact.vid,
-                original_contact.email_address,
-                {
-                    STUB_PROPERTY.name:
-                        original_contact.properties[STUB_PROPERTY.name],
-                    },
-                [],
-                )
-            expected_contacts_with_expected_properties.append(
-                expected_contact_with_expected_properties,
-                )
+        expected_contacts = _get_contacts_with_stub_property(simulator_contacts)
 
-        property_names = (STUB_PROPERTY.name,)
-        self._assert_retrieved_contacts_match(
-            expected_contacts_with_expected_properties,
-            connection,
-            property_names=property_names,
-            )
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(1, len(contacts_retrieval_remote_method_invocations))
-
-        remote_method_invocation = \
-            contacts_retrieval_remote_method_invocations[0]
-        eq_(2, len(remote_method_invocation.query_string_args))
-        assert_in('property', remote_method_invocation.query_string_args)
-        eq_(
-            property_names,
-            remote_method_invocation.query_string_args['property'],
+        self._check_retrieved_contacts_match(
+            simulator_contacts,
+            expected_contacts,
+            property_names=[STUB_PROPERTY.name],
             )
 
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
-        expected_contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
-        connection = self._make_connection_for_contacts(expected_contacts)
-
-        self._assert_retrieved_contacts_match(expected_contacts, connection)
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(1, len(contacts_retrieval_remote_method_invocations))
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
+        self._check_retrieved_contacts_match(
+            contacts,
+            contacts,
+            property_names=['undefined'],
+            )
 
     def test_contacts_with_related_contact_vids(self):
-        expected_related_contact_vids = [2, 3]
-        expected_contacts = \
-            _make_contact(1, related_contact_vids=expected_related_contact_vids)
-        connection = self._make_connection_for_contacts([expected_contacts])
-
-        retrieved_contacts = self._RETRIEVER(connection)
-
-        retrieved_contact = list(retrieved_contacts)[0]
-        actual_related_contact_vids = retrieved_contact.related_contact_vids
-        eq_(expected_related_contact_vids, actual_related_contact_vids)
-
-    def test_contacts_without_related_contact_vids(self):
-        expected_contacts = _make_contact(1)
-        connection = self._make_connection_for_contacts([expected_contacts])
-
-        retrieved_contacts = self._RETRIEVER(connection)
-
-        retrieved_contact = list(retrieved_contacts)[0]
-        assert_false(retrieved_contact.related_contact_vids)
-
-    def _assert_retrieved_contacts_match(
-        self,
-        expected_contacts,
-        connection,
-        *args,
-        **kwargs
-        ):
-        retrieved_contacts = self._RETRIEVER(connection, *args, **kwargs)
-        eq_(list(expected_contacts), list(retrieved_contacts))
+        contacts = [_make_contact(1, related_contact_vids=[2, 3])]
+        self._check_retrieved_contacts_match(contacts, contacts)
 
     #{ Property type casting
 
@@ -221,243 +127,191 @@ class _BaseGettingAllContactsTestCase(_BaseContactsTestCase):
         property_definition,
         property_value_raw,
         ):
-        contact = \
+        simulator_contact = \
             _make_contact(1, {property_definition.name: property_value_raw})
-        property_retrieval_response_data_maker = \
-            AllPropertiesRetrievalResponseDataMaker([property_definition])
+        property_names = [property_definition.name]
         connection = self._make_connection_for_contacts(
-            [contact],
-            property_retrieval_response_data_maker,
+            [simulator_contact],
+            property_definition,
+            property_names=property_names,
             )
 
-        retrieved_contacts = \
-            self._RETRIEVER(connection, [property_definition.name])
-        retrieved_contacts = list(retrieved_contacts)
+        with connection:
+            # Trigger API calls by consuming iterator
+            retrieved_contacts = \
+                list(self._RETRIEVER(connection, property_names))
 
         retrieved_contact = retrieved_contacts[0]
         return retrieved_contact
 
     def test_property_type_casting_for_unknown_property(self):
-        contact = _make_contact(1, {'p1': 'yes'})
-        connection = self._make_connection_for_contacts([contact])
-
-        retrieved_contacts = self._RETRIEVER(connection)
-        retrieved_contacts = list(retrieved_contacts)
-
-        retrieved_contact = retrieved_contacts[0]
-        eq_(0, len(retrieved_contact.properties))
+        simulator_contact = _make_contact(1, {'p1': 'yes'})
+        expected_contact = simulator_contact.copy()
+        expected_contact.properties = {}
+        self._check_retrieved_contacts_match(
+            [simulator_contact],
+            [expected_contact],
+            )
 
     #}
 
-    def _make_connection_for_contacts(
+    def _check_retrieved_contacts_match(
         self,
-        contacts,
-        property_retrieval_response_data_maker=None,
+        simulator_contacts,
+        expected_contacts,
+        **kwargs
         ):
-        contacts_retrieval_response_data_maker = \
-            self._RESPONSE_DATA_MAKER(contacts)
-        if not property_retrieval_response_data_maker:
-            property_retrieval_response_data_maker = \
-                AllPropertiesRetrievalResponseDataMaker([STUB_STRING_PROPERTY])
+        connection = \
+            self._make_connection_for_contacts(simulator_contacts, **kwargs)
 
-        connection = self._make_connection(
-            contacts_retrieval_response_data_maker,
-            property_retrieval_response_data_maker,
+        with connection:
+            # Trigger API calls by consuming iterator
+            retrieved_contacts = list(self._RETRIEVER(connection, **kwargs))
+
+        eq_(list(expected_contacts), retrieved_contacts)
+
+    @classmethod
+    def _make_connection_for_contacts(
+        cls,
+        contacts,
+        available_property=None,
+        **simulator_kwargs
+        ):
+        available_property = available_property or STUB_STRING_PROPERTY
+        simulator = cls._SIMULATOR_CLASS(
+            contacts,
+            [available_property],
+            **simulator_kwargs
             )
+        connection = MockPortalConnection(simulator)
         return connection
+
+
+def _get_contacts_with_stub_property(contacts):
+    contacts_with_stub_property = []
+    for contact in contacts:
+        contact_with_stub_property = Contact(
+            contact.vid,
+            contact.email_address,
+            {STUB_PROPERTY.name: contact.properties[STUB_PROPERTY.name]},
+            [],
+            )
+        contacts_with_stub_property.append(contact_with_stub_property)
+
+    return contacts_with_stub_property
 
 
 class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
 
-    _REMOTE_METHOD = RemoteMethod('/lists/all/contacts/all', 'GET')
-
     _RETRIEVER = staticmethod(get_all_contacts)
 
-    _RESPONSE_DATA_MAKER = AllContactsRetrievalResponseDataMaker
+    _SIMULATOR_CLASS = GetAllContacts
 
     def test_exceeding_pagination_size(self):
         contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
-        expected_contacts = _make_contacts(contacts_count)
-        connection = self._make_connection_for_contacts(expected_contacts)
-
-        self._assert_retrieved_contacts_match(expected_contacts, connection)
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(2, len(contacts_retrieval_remote_method_invocations))
-
-        remote_method_invocation2 = \
-            contacts_retrieval_remote_method_invocations[1]
-        eq_(2, len(remote_method_invocation2.query_string_args))
-
-        assert_in('vidOffset', remote_method_invocation2.query_string_args)
-        page1_last_contact = \
-            expected_contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
-        expect_vid_offset = page1_last_contact.vid
-        eq_(
-            expect_vid_offset,
-            remote_method_invocation2.query_string_args['vidOffset'],
-            )
+        contacts = _make_contacts(contacts_count)
+        self._check_retrieved_contacts_match(contacts, contacts)
 
 
 class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
 
-    _REMOTE_METHOD = \
-        RemoteMethod('/lists/recently_updated/contacts/recent', 'GET')
-
     _RETRIEVER = staticmethod(get_all_contacts_by_last_update)
 
-    _RESPONSE_DATA_MAKER = RecentlyUpdatedContactsRetrievalResponseDataMaker
+    _SIMULATOR_CLASS = GetAllContactsByLastUpdate
 
     def test_exceeding_pagination_size(self):
-        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
-        expected_contacts = _make_contacts(contacts_count)
-        connection = self._make_connection_for_contacts(expected_contacts)
-
-        self._assert_retrieved_contacts_match(expected_contacts, connection)
-
-        contacts_retrieval_remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        eq_(2, len(contacts_retrieval_remote_method_invocations))
-
-        remote_method_invocation2 = \
-            contacts_retrieval_remote_method_invocations[1]
-        eq_(3, len(remote_method_invocation2.query_string_args))
-
-        page1_last_contact = \
-            expected_contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
-        page1_last_contact_added_at = \
-            _STUB_TIMESTAMP - HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
-        expected_query_string_args = {
-            'vidOffset': page1_last_contact.vid,
-            'timeOffset': page1_last_contact_added_at,
-            }
-        assert_dict_contains_subset(
-            expected_query_string_args,
-            remote_method_invocation2.query_string_args,
-            )
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+        self._check_retrieved_contacts_match(contacts, contacts)
 
     def test_duplicated_contacts(self):
-        two_contacts = _make_contacts(2)
-        expected_contacts = two_contacts + two_contacts[:1]
+        contact1, contact2 = _make_contacts(2)
+        expected_contacts = [contact1, contact2]
+        simulator_contacts = [contact1, contact2, contact1]
 
-        connection = self._make_connection_for_contacts(expected_contacts)
+        self._check_retrieved_contacts_match(
+            simulator_contacts,
+            expected_contacts,
+            )
 
-        self._assert_retrieved_contacts_match(two_contacts, connection)
+    def test_single_page_with_cutoff(self):
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1)
+        page_1_contact_2 = contacts[1]
+        self._check_retrieved_contacts_are_newer_than_contact(
+            page_1_contact_2,
+            contacts,
+            )
 
-    def test_cutoff_single_page(self):
-        self._check_cutoff_positioning(5, 10)
+    def test_multiple_pages_with_cutoff_on_first_page(self):
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+        page_1_last_contact = contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
+        self._check_retrieved_contacts_are_newer_than_contact(
+            page_1_last_contact,
+            contacts,
+            )
 
-    def test_cutoff_multiple_page_cutoff_on_first_page(self):
-        self._check_cutoff_positioning(5, 150)
+    def test_multiple_pages_with_cutoff_on_subsequent_page(self):
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 2)
+        page_2_contact_2 = contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1]
+        self._check_retrieved_contacts_are_newer_than_contact(
+            page_2_contact_2,
+            contacts,
+            )
 
-    def test_cutoff_multiple_page_cutoff_on_subsequent_page(self):
-        self._check_cutoff_positioning(102, 150)
+    def test_cutoff_newer_than_most_recently_updated_contact(self):
+        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1)
+        page_1_contact_1 = contacts[0]
+        self._check_retrieved_contacts_are_newer_than_contact(
+            page_1_contact_1,
+            contacts,
+            )
 
-    def _check_cutoff_positioning(self, cutoff_index, contact_count):
-        stub_datetime = \
-            convert_timestamp_in_milliseconds_to_datetime(_STUB_TIMESTAMP)
-        cutoff_datetime = stub_datetime - timedelta(milliseconds=cutoff_index)
+    def _check_retrieved_contacts_are_newer_than_contact(
+        self,
+        contact,
+        simulator_contacts,
+        ):
+        contact_added_at_datetime = \
+            self._SIMULATOR_CLASS.get_contact_added_at_datetime(
+                contact,
+                simulator_contacts,
+                )
+        cutoff_datetime = contact_added_at_datetime + timedelta(milliseconds=1)
 
-        expected_contacts = _make_contacts(contact_count)
+        contact_index = simulator_contacts.index(contact)
+        expected_contacts = simulator_contacts[:contact_index]
 
-        connection = self._make_connection_for_contacts(expected_contacts)
-
-        retrieved_contacts = \
-            self._RETRIEVER(connection, cutoff_datetime=cutoff_datetime)
-        retrieved_contacts = list(retrieved_contacts)
-
-        expected_number_of_contacts = cutoff_index
-        eq_(expected_number_of_contacts, len(retrieved_contacts))
+        self._check_retrieved_contacts_match(
+            simulator_contacts,
+            expected_contacts,
+            cutoff_datetime=cutoff_datetime,
+            )
 
 
-class TestSavingContacts(_BaseContactsTestCase):
-
-    _REMOTE_METHOD = RemoteMethod('/contact/batch/', 'POST')
-
-    def setup(self):
-        self.connection = \
-            self._make_connection_for_property_definition(STUB_STRING_PROPERTY)
+class TestSavingContacts(object):
 
     def test_no_contacts(self):
-        contacts_generator = iter([])
-        save_contacts(contacts_generator, self.connection)
-
-        remote_method_invocations = \
-            self._get_remote_method_invocations(self.connection)
-        eq_(0, len(remote_method_invocations))
+        self._check_saved_contacts_match([])
 
     def test_without_exceeding_batch_size_limit(self):
         contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
-
-        contacts_generator = iter(contacts)
-        save_contacts(contacts_generator, self.connection)
-
-        expected_body_deserialization = \
-            [{'email': c.email_address, 'properties': []} for c in contacts]
-        remote_method_invocation = \
-            self._get_sole_remote_method_invocation(self.connection)
-        eq_(
-            expected_body_deserialization,
-            remote_method_invocation.body_deserialization,
-            )
+        self._check_saved_contacts_match(contacts)
 
     def test_exceeding_batch_size_limit(self):
         contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
+        self._check_saved_contacts_match(contacts)
+
+    def test_contacts_as_a_generator(self):
+        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        connection = self._make_connection_for_contacts(contacts)
 
         contacts_generator = iter(contacts)
-        save_contacts(contacts_generator, self.connection)
-
-        remote_method_invocations = \
-            self._get_remote_method_invocations(self.connection)
-        eq_(2, len(remote_method_invocations))
-
-        contacts1 = contacts[:HUBSPOT_BATCH_SAVING_SIZE_LIMIT]
-        remote_method_invocation1 = remote_method_invocations[0]
-        self._assert_contacts_sent_in_request(
-            contacts1,
-            remote_method_invocation1,
-            )
-
-        contacts2 = contacts[HUBSPOT_BATCH_SAVING_SIZE_LIMIT:]
-        remote_method_invocation2 = remote_method_invocations[1]
-        self._assert_contacts_sent_in_request(
-            contacts2,
-            remote_method_invocation2,
-            )
-
-    def test_contacts_as_a_list(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
-
-        save_contacts(contacts, self.connection)
-
-        remote_method_invocation = \
-            self._get_sole_remote_method_invocation(self.connection)
-        self._assert_contacts_sent_in_request(
-            contacts,
-            remote_method_invocation,
-            )
-
-    @staticmethod
-    def _assert_contacts_sent_in_request(contacts, remote_method_invocation):
-        contacts_data = _format_contacts_data_for_saving(contacts)
-        eq_(contacts_data, remote_method_invocation.body_deserialization)
+        with connection:
+            save_contacts(contacts_generator, connection)
 
     def test_property_values_in_request(self):
         property_value = 'true'
         contact = _make_contact(1, {STUB_STRING_PROPERTY.name: property_value})
-        connection = \
-            self._make_connection_for_property_definition(STUB_STRING_PROPERTY)
-
-        save_contacts([contact], connection)
-
-        remote_method_invocation = \
-            self._get_sole_remote_method_invocation(connection)
-        contact_properties_data = \
-            remote_method_invocation.body_deserialization[0]['properties']
-        expected_contact_properties_data = \
-            [{'property': STUB_STRING_PROPERTY.name, 'value': property_value}]
-        eq_(expected_contact_properties_data, contact_properties_data)
+        self._check_saved_contacts_match([contact])
 
     def test_property_type_casting(self):
         test_cases_data = [
@@ -496,20 +350,17 @@ class TestSavingContacts(_BaseContactsTestCase):
         expected_cast_value,
         ):
         contact = _make_contact(1, {property_definition.name: original_value})
+        contacts = [contact]
         connection = \
-            self._make_connection_for_property_definition(property_definition)
+            self._make_connection_for_contacts(contacts, property_definition)
+        with connection:
+            save_contacts(contacts, connection)
 
-        save_contacts([contact], connection)
-
-        remote_method_invocation = \
-            self._get_sole_remote_method_invocation(connection)
-        expected_contact = contact.copy()
-        expected_contact.properties = \
-            {property_definition.name: expected_cast_value}
-        self._assert_contacts_sent_in_request(
-            [expected_contact],
-            remote_method_invocation,
-            )
+        api_call = connection.api_calls[-1]
+        contact_data = api_call.request_body_deserialization[0]
+        contact_properties_data = contact_data['properties']
+        contact_property_data = contact_properties_data[0]
+        eq_(expected_cast_value, contact_property_data['value'])
 
     def test_invalid_property_values(self):
         test_cases_data = [
@@ -530,53 +381,30 @@ class TestSavingContacts(_BaseContactsTestCase):
         property_value,
         exc_message_template,
         ):
-        contact = _make_contact(1, {property_.name: property_value})
-        connection = self._make_connection_for_property_definition(property_)
+        saved_contacts = []
+        connection = \
+            self._make_connection_for_contacts(saved_contacts, property_)
 
+        contact_with_invalid_property_value = \
+            _make_contact(1, {property_.name: property_value})
         exc_message = exc_message_template.format(repr(property_value))
         with assert_raises_regexp(HubspotPropertyValueError, exc_message):
-            save_contacts([contact], connection)
+            with connection:
+                save_contacts([contact_with_invalid_property_value], connection)
 
-    def _make_connection_for_property_definition(self, property_definition):
-        property_retrieval_response_data_maker = \
-            AllPropertiesRetrievalResponseDataMaker([property_definition])
-        connection = self._make_connection(
-            CONTACT_SAVING_RESPONSE_DATA_MAKER,
-            property_retrieval_response_data_maker,
-            )
+    @classmethod
+    def _check_saved_contacts_match(cls, contacts, available_property=None):
+        connection = \
+            cls._make_connection_for_contacts(contacts, available_property)
+        with connection:
+            save_contacts(contacts, connection)
+
+    @staticmethod
+    def _make_connection_for_contacts(contacts, available_property=None):
+        available_property = available_property or STUB_STRING_PROPERTY
+        simulator = SaveContacts(contacts, [available_property])
+        connection = MockPortalConnection(simulator)
         return connection
-
-    def _get_sole_remote_method_invocation(self, connection):
-        remote_method_invocations = \
-            self._get_remote_method_invocations(connection)
-        eq_(1, len(remote_method_invocations))
-        remote_method_invocation = remote_method_invocations[0]
-        return remote_method_invocation
-
-    def _get_remote_method_invocations(self, connection):
-        remote_method_invocations = \
-            connection.get_invocations_for_remote_method(self._REMOTE_METHOD)
-        return remote_method_invocations
-
-
-def _format_contacts_data_for_saving(contacts):
-    contacts_data = [_format_contact_data_for_saving(c) for c in contacts]
-    return contacts_data
-
-
-def _format_contact_data_for_saving(contact):
-    contact_data = {
-        'email': contact.email_address,
-        'properties': _format_contact_properties_for_saving(contact.properties),
-        }
-    return contact_data
-
-
-def _format_contact_properties_for_saving(contact_properties):
-    contact_properties_data = [
-        {'property': n, 'value': v} for n, v in contact_properties.items()
-        ]
-    return contact_properties_data
 
 
 def _make_contacts(count):

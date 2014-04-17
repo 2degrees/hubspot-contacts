@@ -14,19 +14,12 @@
 #
 ##############################################################################
 
-from abc import ABCMeta
-from abc import abstractproperty
 
-from nose.tools import eq_
+def format_data_for_property_group(property_group):
+    request_body_deserialization = {'name': property_group.name}
 
+    if property_group.display_name:
+        request_body_deserialization['displayName'] = \
+            property_group.display_name
 
-class BaseMethodTestCase(object):
-
-    __metaclass__ = ABCMeta
-
-    _REMOTE_METHOD = abstractproperty()
-
-    @classmethod
-    def _assert_expected_remote_method_used(cls, connection):
-        for remote_method_invocation in connection.remote_method_invocations:
-            eq_(cls._REMOTE_METHOD, remote_method_invocation.remote_method)
+    return request_body_deserialization
