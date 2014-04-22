@@ -290,11 +290,9 @@ class GetAllContactsByLastUpdate(GetAllContacts):
                 cls._MOST_RECENT_CONTACT_UPDATE_TIMESTAMP - cutoff_timestamp
 
             last_page_number_to_include = \
-                ceil((cutoff_index + 1.0) / HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
-            first_contact_index_to_exclude = int(
-                last_page_number_to_include *
-                HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT,
-                )
+                ceil((cutoff_index + 1.0) / BATCH_RETRIEVAL_SIZE_LIMIT)
+            first_contact_index_to_exclude = \
+                int(last_page_number_to_include * BATCH_RETRIEVAL_SIZE_LIMIT)
             filtered_contacts = contacts[:first_contact_index_to_exclude]
 
         else:
