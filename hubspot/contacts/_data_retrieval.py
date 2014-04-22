@@ -2,7 +2,7 @@ import re
 
 from voluptuous import Schema
 
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
 
 
 _CAMEL_CASE_CONVERSION_RE = re.compile(r'\-(\w)')
@@ -14,7 +14,7 @@ class PaginatedDataRetriever(object):
         self,
         response_data_key,
         response_offset_keys,
-        page_size=HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT,
+        page_size=BATCH_RETRIEVAL_SIZE_LIMIT,
         ):
         self._response_data_key = response_data_key
         self._response_offset_keys = response_offset_keys

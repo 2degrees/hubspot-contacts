@@ -31,8 +31,8 @@ from hubspot.contacts import Contact
 from hubspot.contacts import get_all_contacts
 from hubspot.contacts import get_all_contacts_by_last_update
 from hubspot.contacts import save_contacts
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.testing import GetAllContacts
@@ -59,7 +59,7 @@ class _BaseGettingAllContactsTestCase(object):
         self._check_retrieved_contacts_match([], [])
 
     def test_not_exceeding_pagination_size(self):
-        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1
+        contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT - 1
         contacts = _make_contacts(contacts_count)
         self._check_retrieved_contacts_match(contacts, contacts)
 
@@ -86,7 +86,7 @@ class _BaseGettingAllContactsTestCase(object):
 
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT)
         self._check_retrieved_contacts_match(
             contacts,
             contacts,
@@ -208,7 +208,7 @@ class TestGettingAllContacts(_BaseGettingAllContactsTestCase):
     _SIMULATOR_CLASS = GetAllContacts
 
     def test_exceeding_pagination_size(self):
-        contacts_count = HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1
+        contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = _make_contacts(contacts_count)
         self._check_retrieved_contacts_match(contacts, contacts)
 
@@ -220,7 +220,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
     _SIMULATOR_CLASS = GetAllContactsByLastUpdate
 
     def test_exceeding_pagination_size(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
         self._check_retrieved_contacts_match(contacts, contacts)
 
     def test_duplicated_contacts(self):
@@ -234,7 +234,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             )
 
     def test_single_page_with_cutoff(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1)
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT - 1)
         page_1_contact_2 = contacts[1]
         self._check_retrieved_contacts_are_newer_than_contact(
             page_1_contact_2,
@@ -242,23 +242,23 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingAllContactsTestCase):
             )
 
     def test_multiple_pages_with_cutoff_on_first_page(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1)
-        page_1_last_contact = contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1]
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+        page_1_last_contact = contacts[BATCH_RETRIEVAL_SIZE_LIMIT - 1]
         self._check_retrieved_contacts_are_newer_than_contact(
             page_1_last_contact,
             contacts,
             )
 
     def test_multiple_pages_with_cutoff_on_subsequent_page(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 2)
-        page_2_contact_2 = contacts[HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1]
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 2)
+        page_2_contact_2 = contacts[BATCH_RETRIEVAL_SIZE_LIMIT + 1]
         self._check_retrieved_contacts_are_newer_than_contact(
             page_2_contact_2,
             contacts,
             )
 
     def test_cutoff_newer_than_most_recently_updated_contact(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT - 1)
+        contacts = _make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT - 1)
         page_1_contact_1 = contacts[0]
         self._check_retrieved_contacts_are_newer_than_contact(
             page_1_contact_1,
@@ -293,15 +293,15 @@ class TestSavingContacts(object):
         self._check_saved_contacts_match([])
 
     def test_without_exceeding_batch_size_limit(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = _make_contacts(BATCH_SAVING_SIZE_LIMIT)
         self._check_saved_contacts_match(contacts)
 
     def test_exceeding_batch_size_limit(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT + 1)
+        contacts = _make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
         self._check_saved_contacts_match(contacts)
 
     def test_contacts_as_a_generator(self):
-        contacts = _make_contacts(HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        contacts = _make_contacts(BATCH_SAVING_SIZE_LIMIT)
         connection = self._make_connection_for_contacts(contacts)
 
         contacts_generator = iter(contacts)
