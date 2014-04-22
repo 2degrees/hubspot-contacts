@@ -16,6 +16,7 @@
 
 from pyrecord import Record
 
+from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
 from hubspot.contacts._schemas.lists import CONTACT_LIST_SCHEMA
 from hubspot.contacts._schemas.lists import \
@@ -30,9 +31,12 @@ ContactList = Record.create_type(
     )
 
 
+_CONTACT_LIST_COLLECTION_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/lists'
+
+
 def create_static_contact_list(contact_list_name, connection):
     contact_list_data = connection.send_post_request(
-        '/lists',
+        _CONTACT_LIST_COLLECTION_URL_PATH,
         {'name': contact_list_name, 'dynamic': False},
         )
     contact_list = _build_contact_list_from_data(contact_list_data)
@@ -41,7 +45,8 @@ def create_static_contact_list(contact_list_name, connection):
 
 def get_all_contact_lists(connection):
     data_retriever = PaginatedDataRetriever('lists', ['offset'])
-    contact_lists_data = data_retriever.get_data(connection, '/lists')
+    contact_lists_data = \
+        data_retriever.get_data(connection, _CONTACT_LIST_COLLECTION_URL_PATH)
     contact_lists = _build_contact_lists_from_data(contact_lists_data)
     return contact_lists
 
@@ -63,8 +68,9 @@ def _build_contact_list_from_data(contact_list_data):
 
 
 def add_contacts_to_list(contact_list, contacts, connection):
+    path_info = '/lists/{}/add'.format(contact_list.id)
     updated_contact_vids = _update_contact_list_membership(
-        '/lists/{}/add'.format(contact_list.id),
+        CONTACTS_API_SCRIPT_NAME + path_info,
         contacts,
         connection,
         )
@@ -72,8 +78,9 @@ def add_contacts_to_list(contact_list, contacts, connection):
 
 
 def remove_contacts_from_list(contact_list, contacts, connection):
+    path_info = '/lists/{}/remove'.format(contact_list.id)
     updated_contact_vids = _update_contact_list_membership(
-        '/lists/{}/remove'.format(contact_list.id),
+        CONTACTS_API_SCRIPT_NAME + path_info,
         contacts,
         connection,
         )

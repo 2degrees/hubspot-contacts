@@ -23,6 +23,7 @@ so doing so would mean testing the tests.
 
 from abc import ABCMeta
 from abc import abstractmethod
+from abc import abstractproperty
 from datetime import datetime
 from json import dumps as json_serialize
 
@@ -47,85 +48,140 @@ from hubspot.contacts.request_data_formatters.property_groups import \
     format_data_for_property_group as format_request_data_for_property_group
 
 
-class GetAllContacts(object):
+class _PaginatedObjectsRetriever(object):
 
-    _API_CALL_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/lists/all/contacts/all'
+    __metaclass__ = ABCMeta
 
-    def __init__(self, contacts, available_properties, property_names=()):
-        super(GetAllContacts, self).__init__()
+    _API_CALL_PATH_INFO = abstractproperty()
 
-        self._contacts_by_page = \
-            paginate(contacts, BATCH_RETRIEVAL_SIZE_LIMIT)
-        self._available_properties_simulator = \
-            GetAllProperties(available_properties)
-        self._property_names = property_names
+    _OBJECT_DATA_KEY = abstractproperty()
+
+    def __init__(self, objects):
+        super(_PaginatedObjectsRetriever, self).__init__()
+        self._objects_by_page = paginate(objects, BATCH_RETRIEVAL_SIZE_LIMIT)
 
     def __call__(self):
-        api_calls = self._available_properties_simulator()
+        api_calls = []
 
-        first_page_contacts = \
-            self._contacts_by_page[0] if self._contacts_by_page else []
-        first_page_api_call = self._get_api_call_for_page(first_page_contacts)
+        if self._objects_by_page:
+            first_page_objects = self._objects_by_page[0]
+        else:
+            first_page_objects = []
+
+        first_page_api_call = self._get_api_call_for_page(first_page_objects)
         api_calls.append(first_page_api_call)
 
-        subsequent_pages_contacts = self._contacts_by_page[1:]
-        for page_contacts in subsequent_pages_contacts:
-            api_call = self._get_api_call_for_page(page_contacts)
+        subsequent_pages_objects = self._objects_by_page[1:]
+        for page_objects in subsequent_pages_objects:
+            api_call = self._get_api_call_for_page(page_objects)
             api_calls.append(api_call)
 
         return api_calls
 
-    def _get_api_call_for_page(self, page_contacts):
-        query_string_args = self._get_query_string_args(page_contacts)
+    def _get_api_call_for_page(self, page_objects):
+        query_string_args = self._get_query_string_args(page_objects)
         response_body_deserialization = \
-            self._get_response_body_deserialization(page_contacts)
+            self._get_response_body_deserialization(page_objects)
         api_call = SuccessfulAPICall(
-            self._API_CALL_URL_PATH,
+            CONTACTS_API_SCRIPT_NAME + self._API_CALL_PATH_INFO,
             'GET',
             query_string_args,
             response_body_deserialization=response_body_deserialization,
             )
         return api_call
 
-    def _get_query_string_args(self, page_contacts):
+    def _get_query_string_args(self, page_objects):
         query_string_args = {'count': BATCH_RETRIEVAL_SIZE_LIMIT}
 
-        if self._property_names:
-            query_string_args['property'] = self._property_names
-
-        page_number = self._get_current_contacts_page_number(page_contacts)
+        page_number = self._get_current_objects_page_number(page_objects)
         if 1 < page_number:
-            previous_page_contacts = self._contacts_by_page[page_number - 2]
-            previous_page_last_contact = previous_page_contacts[-1]
-            query_string_args['vidOffset'] = previous_page_last_contact.vid
+            query_string_args_for_page = \
+                self._get_query_string_args_for_page(page_number)
+            query_string_args.update(query_string_args_for_page)
 
         return query_string_args
 
-    def _get_response_body_deserialization(self, page_contacts):
-        page_number = self._get_current_contacts_page_number(page_contacts)
-        pages_count = len(self._contacts_by_page)
+    @abstractmethod
+    def _get_query_string_args_for_page(self, page_number):
+        pass
+
+    def _get_response_body_deserialization(self, page_objects):
+        page_number = self._get_current_objects_page_number(page_objects)
+        pages_count = len(self._objects_by_page)
         page_has_successors = page_number < pages_count
 
-        page_last_contact = page_contacts[-1] if page_contacts else None
-        page_last_contact_vid = \
-            page_last_contact.vid if page_last_contact else 0
-
-        page_contacts_data = self._get_contacts_data(page_contacts)
-
-        return {
-            'contacts': page_contacts_data,
+        page_objects_data = self._get_objects_data(page_objects)
+        response_body_deserialization = {
             'has-more': page_has_successors,
-            'vid-offset': page_last_contact_vid,
+            self._OBJECT_DATA_KEY: page_objects_data,
             }
 
-    def _get_current_contacts_page_number(self, page_contacts):
-        if self._contacts_by_page:
-            page_number = self._contacts_by_page.index(page_contacts) + 1
+        response_body_deserialization.update(
+            self._get_response_body_deserialization_for_page(page_objects)
+            )
+
+        return response_body_deserialization
+
+    @abstractmethod
+    def _get_response_body_deserialization_for_page(self, page_objects):
+        pass
+
+    def _get_current_objects_page_number(self, page_objects):
+        if self._objects_by_page:
+            page_number = self._objects_by_page.index(page_objects) + 1
         else:
             page_number = 1
         return page_number
 
-    def _get_contacts_data(self, contacts):
+    @abstractmethod
+    def _get_objects_data(self, objects):
+        pass
+
+
+class GetAllContacts(_PaginatedObjectsRetriever):
+
+    _API_CALL_PATH_INFO = '/lists/all/contacts/all'
+
+    _OBJECT_DATA_KEY = 'contacts'
+
+    def __init__(self, contacts, available_properties, property_names=()):
+        super(GetAllContacts, self).__init__(contacts)
+
+        self._available_properties_simulator = \
+            GetAllProperties(available_properties)
+        self._property_names = property_names
+
+    def __call__(self):
+        api_calls = self._available_properties_simulator()
+        api_calls.extend(super(GetAllContacts, self).__call__())
+        return api_calls
+
+    def _get_query_string_args(self, page_contacts):
+        query_string_args = \
+            super(GetAllContacts, self)._get_query_string_args(page_contacts)
+
+        if self._property_names:
+            query_string_args['property'] = self._property_names
+
+        return query_string_args
+
+    def _get_query_string_args_for_page(self, page_number):
+        previous_page_contacts = self._objects_by_page[page_number - 2]
+        previous_page_last_contact = previous_page_contacts[-1]
+        query_string_args_for_page = \
+            {'vidOffset': previous_page_last_contact.vid}
+        return query_string_args_for_page
+
+    def _get_response_body_deserialization_for_page(self, page_contacts):
+        page_last_contact = page_contacts[-1] if page_contacts else None
+        page_last_contact_vid = \
+            page_last_contact.vid if page_last_contact else 0
+        response_body_deserialization_for_page = {
+            'vid-offset': page_last_contact_vid,
+            }
+        return response_body_deserialization_for_page
+
+    def _get_objects_data(self, contacts):
         contacts_data = []
         for contact in contacts:
             contact_properties_data = \
@@ -187,8 +243,7 @@ class GetAllContacts(object):
 
 class GetAllContactsByLastUpdate(GetAllContacts):
 
-    _API_CALL_URL_PATH = \
-        CONTACTS_API_SCRIPT_NAME + '/lists/recently_updated/contacts/recent'
+    _API_CALL_PATH_INFO = '/lists/recently_updated/contacts/recent'
 
     MOST_RECENT_CONTACT_UPDATE_DATETIME = datetime.now()
 
@@ -234,35 +289,34 @@ class GetAllContactsByLastUpdate(GetAllContacts):
 
         return filtered_contacts
 
-    def _get_query_string_args(self, page_contacts):
+    def _get_query_string_args_for_page(self, page_number):
         super_ = super(GetAllContactsByLastUpdate, self)
-        query_string_args = super_._get_query_string_args(page_contacts)
+        query_string_args_for_page = \
+            super_._get_query_string_args_for_page(page_number)
 
-        page_number = self._get_current_contacts_page_number(page_contacts)
-        if 1 < page_number:
-            page_index = page_number - 1
-            previous_page_contacts = self._contacts_by_page[page_index - 1]
-            previous_page_last_contact = previous_page_contacts[-1]
-            query_string_args['timeOffset'] = \
-                self._get_contact_added_at_timestamp(previous_page_last_contact)
+        page_index = page_number - 1
+        previous_page_contacts = self._objects_by_page[page_index - 1]
+        previous_page_last_contact = previous_page_contacts[-1]
+        query_string_args_for_page['timeOffset'] = \
+            self._get_contact_added_at_timestamp(previous_page_last_contact)
 
-        return query_string_args
+        return query_string_args_for_page
 
-    def _get_response_body_deserialization(self, page_contacts):
+    def _get_response_body_deserialization_for_page(self, page_contacts):
         super_ = super(GetAllContactsByLastUpdate, self)
-        response_body_deserialization = \
-            super_._get_response_body_deserialization(page_contacts)
+        response_body_deserialization_for_page = \
+            super_._get_response_body_deserialization_for_page(page_contacts)
 
         if page_contacts:
             page_last_contact = page_contacts[-1]
-            response_body_deserialization['time-offset'] = \
+            response_body_deserialization_for_page['time-offset'] = \
                 self._get_contact_added_at_timestamp(page_last_contact)
 
-        return response_body_deserialization
+        return response_body_deserialization_for_page
 
-    def _get_contacts_data(self, contacts):
+    def _get_objects_data(self, contacts):
         contacts_data = \
-            super(GetAllContactsByLastUpdate, self)._get_contacts_data(contacts)
+            super(GetAllContactsByLastUpdate, self)._get_objects_data(contacts)
 
         for contact, contact_data in zip(contacts, contacts_data):
             contact_data['addedAt'] = \
@@ -294,8 +348,7 @@ class SaveContacts(object):
     def __init__(self, contacts, available_properties):
         super(SaveContacts, self).__init__()
 
-        self._contacts_by_page = \
-            paginate(contacts, BATCH_SAVING_SIZE_LIMIT)
+        self._contacts_by_page = paginate(contacts, BATCH_SAVING_SIZE_LIMIT)
 
         self._property_type_by_property_name = \
             {p.name: p.__class__ for p in available_properties}
@@ -504,3 +557,154 @@ def _format_response_data_for_property_group(property_group):
 def _format_response_data_for_properties(properties):
     properties_data = [format_data_for_property(p) for p in properties]
     return properties_data
+
+
+class GetAllContactLists(_PaginatedObjectsRetriever):
+
+    _API_CALL_PATH_INFO = '/lists'
+
+    _OBJECT_DATA_KEY = 'lists'
+
+    def _get_query_string_args_for_page(self, page_number):
+        query_string_args_for_page = \
+            {'offset': BATCH_RETRIEVAL_SIZE_LIMIT * (page_number - 1)}
+        return query_string_args_for_page
+
+    def _get_response_body_deserialization_for_page(self, page_contact_lists):
+        page_number = self._get_current_objects_page_number(page_contact_lists)
+        response_body_deserialization_for_page = {
+            'offset': BATCH_RETRIEVAL_SIZE_LIMIT * page_number,
+            }
+        return response_body_deserialization_for_page
+
+    @staticmethod
+    def _get_objects_data(contact_lists):
+        contact_lists_data = []
+        for contact_list in contact_lists:
+            contact_list_data = {
+                'listId': contact_list.id,
+                'name': contact_list.name,
+                'dynamic': contact_list.is_dynamic,
+                }
+            contact_lists_data.append(contact_list_data)
+        return contact_lists_data
+
+
+class _BaseCreateStaticContactList(object):
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self, contact_list_name):
+        super(_BaseCreateStaticContactList, self).__init__()
+        self._contact_list_name = contact_list_name
+
+    def __call__(self):
+        api_call = self._get_api_call()
+        return [api_call]
+
+    @abstractmethod
+    def _get_api_call(self):
+        request_body_deserialization = {
+            'name': self._contact_list_name,
+            'dynamic': False,
+            }
+        api_call = APICall(
+            CONTACTS_API_SCRIPT_NAME + '/lists',
+            'POST',
+            request_body_deserialization=request_body_deserialization,
+            )
+        return api_call
+
+
+class CreateStaticContactList(_BaseCreateStaticContactList):
+
+    def _get_api_call(self):
+        generalized_api_call = \
+            super(CreateStaticContactList, self)._get_api_call()
+
+        response_body_deserialization = \
+            dict(generalized_api_call.request_body_deserialization, listId=1)
+
+        api_call = SuccessfulAPICall.init_from_generalization(
+            generalized_api_call,
+            response_body_deserialization=response_body_deserialization,
+            )
+        return api_call
+
+
+class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
+
+    def __init__(self, contact_list_name, exception):
+        super_ = super(UnsuccessfulCreateStaticContactList, self)
+        super_.__init__(contact_list_name)
+        self._exception = exception
+
+    def _get_api_call(self):
+        generalized_api_call = \
+            super(UnsuccessfulCreateStaticContactList, self)._get_api_call()
+
+        api_call = UnsuccessfulAPICall.init_from_generalization(
+            generalized_api_call,
+            exception=self._exception,
+            )
+        return api_call
+
+
+class _UpdateContactListMembership(object):
+
+    __metaclass__ = ABCMeta
+
+    url_path_list_action = abstractproperty()
+
+    def __init__(self, contact_list, contacts_to_update, updated_contacts):
+        super(_UpdateContactListMembership, self).__init__()
+        self._contact_list = contact_list
+        self._contacts_to_update_vids = \
+            self._get_contact_vids(contacts_to_update)
+        self._updated_contacts_vids = self._get_contact_vids(updated_contacts)
+
+    def __call__(self):
+        if not self._contacts_to_update_vids:
+            return []
+
+        request_body_deserialization = {'vids': self._contacts_to_update_vids}
+        response_body_deserialization = {'updated': self._updated_contacts_vids}
+        path_info = '/lists/{}/{}'.format(
+            self._contact_list.id,
+            self.url_path_list_action,
+            )
+        api_call = SuccessfulAPICall(
+            CONTACTS_API_SCRIPT_NAME + path_info,
+            'POST',
+            request_body_deserialization=request_body_deserialization,
+            response_body_deserialization=response_body_deserialization,
+            )
+        return [api_call]
+
+    @staticmethod
+    def _get_contact_vids(contacts):
+        return [c.vid for c in contacts]
+
+
+class AddContactsToList(_UpdateContactListMembership):
+
+    url_path_list_action = 'add'
+
+    def __init__(self, contact_list, contacts_to_add, updated_contacts):
+        super(AddContactsToList, self).__init__(
+            contact_list,
+            contacts_to_add,
+            updated_contacts,
+            )
+
+
+class RemoveContactsFromList(_UpdateContactListMembership):
+
+    url_path_list_action = 'remove'
+
+    def __init__(self, contact_list, contacts_to_remove, updated_contacts):
+        super(RemoveContactsFromList, self).__init__(
+            contact_list,
+            contacts_to_remove,
+            updated_contacts,
+            )
