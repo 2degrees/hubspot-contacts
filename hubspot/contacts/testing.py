@@ -26,6 +26,7 @@ from abc import abstractmethod
 from abc import abstractproperty
 from datetime import datetime
 from json import dumps as json_serialize
+from math import ceil
 
 from hubspot.connection.testing import APICall
 from hubspot.connection.testing import SuccessfulAPICall
@@ -260,10 +261,11 @@ class GetAllContactsByLastUpdate(GetAllContacts):
         cutoff_datetime=None,
         ):
 
-        filtered_contacts = self._exclude_contacts_after_cutoff_datetime(
+        filtered_contacts = self._exclude_contacts_pages_after_cutoff_datetime(
             contacts,
             cutoff_datetime,
             )
+
         super(GetAllContactsByLastUpdate, self).__init__(
             filtered_contacts,
             available_properties,
@@ -273,7 +275,11 @@ class GetAllContactsByLastUpdate(GetAllContacts):
         self._contacts = filtered_contacts
 
     @classmethod
-    def _exclude_contacts_after_cutoff_datetime(cls, contacts, cutoff_datetime):
+    def _exclude_contacts_pages_after_cutoff_datetime(
+        cls,
+        contacts,
+        cutoff_datetime,
+        ):
         if not cutoff_datetime:
             filtered_contacts = contacts
 
@@ -282,7 +288,14 @@ class GetAllContactsByLastUpdate(GetAllContacts):
                 convert_date_to_timestamp_in_milliseconds(cutoff_datetime)
             cutoff_index = \
                 cls._MOST_RECENT_CONTACT_UPDATE_TIMESTAMP - cutoff_timestamp
-            filtered_contacts = contacts[:cutoff_index + 1]
+
+            last_page_number_to_include = \
+                ceil((cutoff_index + 1.0) / HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
+            first_contact_index_to_exclude = int(
+                last_page_number_to_include *
+                HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT,
+                )
+            filtered_contacts = contacts[:first_contact_index_to_exclude]
 
         else:
             filtered_contacts = []
