@@ -14,7 +14,10 @@
 #
 ##############################################################################
 
-HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT = 100
+BATCH_RETRIEVAL_SIZE_LIMIT = 100
 
 
-HUBSPOT_BATCH_SAVING_SIZE_LIMIT = 1000
+BATCH_SAVING_SIZE_LIMIT = 1000
+
+
+CONTACTS_API_SCRIPT_NAME = '/contacts/v1'

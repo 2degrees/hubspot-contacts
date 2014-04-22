@@ -26,7 +26,7 @@ from nose.tools import ok_
 from voluptuous import Invalid
 
 from hubspot.contacts import Contact
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts.lists import ContactList
 from hubspot.contacts.lists import add_contacts_to_list
 from hubspot.contacts.lists import create_static_contact_list
@@ -65,7 +65,7 @@ class TestContactListsRetrieval(object):
 
     def test_getting_existing_contact_lists_multiple_pages(self):
         contact_lists = []
-        for index in xrange(0, HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT + 1):
+        for index in xrange(0, BATCH_RETRIEVAL_SIZE_LIMIT + 1):
             contact_list = ContactList(
                 index,
                 'list{}'.format(index),

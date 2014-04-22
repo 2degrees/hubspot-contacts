@@ -21,8 +21,9 @@ from json import loads as json_deserialize
 
 from pyrecord import Record
 
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
+from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
@@ -47,6 +48,9 @@ Contact = Record.create_type(
 
 
 _EPOCH_DATETIME = datetime(1970, 1, 1)
+
+
+_CONTACTS_SAVING_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/contact/batch/'
 
 
 def get_all_contacts(connection, property_names=()):
@@ -107,7 +111,7 @@ def _get_contacts_from_all_pages(
 
 
 def _get_contacts_data_by_page(path_info, connection, property_names):
-    base_query_string_args = {'count': HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
+    base_query_string_args = {'count': BATCH_RETRIEVAL_SIZE_LIMIT}
     if property_names:
         base_query_string_args['property'] = property_names
     has_more_pages = True
@@ -120,8 +124,8 @@ def _get_contacts_data_by_page(path_info, connection, property_names):
         if last_contact_addition_timestamp:
             query_string_args['timeOffset'] = last_contact_addition_timestamp
 
-        contacts_data = \
-            connection.send_get_request(path_info, query_string_args)
+        url_path = CONTACTS_API_SCRIPT_NAME + path_info
+        contacts_data = connection.send_get_request(url_path, query_string_args)
         contacts_data = CONTACTS_PAGE_SCHEMA(contacts_data)
 
         yield contacts_data['contacts']
@@ -195,13 +199,16 @@ def save_contacts(contacts, connection):
     property_type_by_property_name = \
         _get_property_type_by_property_name(connection)
 
-    contacts_batches = ipaginate(contacts, HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+    contacts_batches = ipaginate(contacts, BATCH_SAVING_SIZE_LIMIT)
     for contacts_batch in contacts_batches:
         contacts_batch_data = format_contacts_data_for_saving(
             contacts_batch,
             property_type_by_property_name,
             )
-        connection.send_post_request('/contact/batch/', contacts_batch_data)
+        connection.send_post_request(
+            _CONTACTS_SAVING_URL_PATH,
+            contacts_batch_data,
+            )
 
 
 def _get_property_type_by_property_name(connection):

@@ -32,8 +32,9 @@ from hubspot.connection.testing import APICall
 from hubspot.connection.testing import SuccessfulAPICall
 from hubspot.connection.testing import UnsuccessfulAPICall
 
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT
-from hubspot.contacts._batching_limits import HUBSPOT_BATCH_SAVING_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
+from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
 from hubspot.contacts.generic_utils import \
@@ -52,14 +53,13 @@ class _PaginatedObjectsRetriever(object):
 
     __metaclass__ = ABCMeta
 
-    _API_CALL_URL_PATH = abstractproperty()
+    _API_CALL_PATH_INFO = abstractproperty()
 
     _OBJECT_DATA_KEY = abstractproperty()
 
     def __init__(self, objects):
         super(_PaginatedObjectsRetriever, self).__init__()
-        self._objects_by_page = \
-            paginate(objects, HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT)
+        self._objects_by_page = paginate(objects, BATCH_RETRIEVAL_SIZE_LIMIT)
 
     def __call__(self):
         api_calls = []
@@ -84,7 +84,7 @@ class _PaginatedObjectsRetriever(object):
         response_body_deserialization = \
             self._get_response_body_deserialization(page_objects)
         api_call = SuccessfulAPICall(
-            self._API_CALL_URL_PATH,
+            CONTACTS_API_SCRIPT_NAME + self._API_CALL_PATH_INFO,
             'GET',
             query_string_args,
             response_body_deserialization=response_body_deserialization,
@@ -92,7 +92,7 @@ class _PaginatedObjectsRetriever(object):
         return api_call
 
     def _get_query_string_args(self, page_objects):
-        query_string_args = {'count': HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT}
+        query_string_args = {'count': BATCH_RETRIEVAL_SIZE_LIMIT}
 
         page_number = self._get_current_objects_page_number(page_objects)
         if 1 < page_number:
@@ -141,7 +141,7 @@ class _PaginatedObjectsRetriever(object):
 
 class GetAllContacts(_PaginatedObjectsRetriever):
 
-    _API_CALL_URL_PATH = '/lists/all/contacts/all'
+    _API_CALL_PATH_INFO = '/lists/all/contacts/all'
 
     _OBJECT_DATA_KEY = 'contacts'
 
@@ -244,7 +244,7 @@ class GetAllContacts(_PaginatedObjectsRetriever):
 
 class GetAllContactsByLastUpdate(GetAllContacts):
 
-    _API_CALL_URL_PATH = '/lists/recently_updated/contacts/recent'
+    _API_CALL_PATH_INFO = '/lists/recently_updated/contacts/recent'
 
     MOST_RECENT_CONTACT_UPDATE_DATETIME = datetime.now()
 
@@ -361,8 +361,7 @@ class SaveContacts(object):
     def __init__(self, contacts, available_properties):
         super(SaveContacts, self).__init__()
 
-        self._contacts_by_page = \
-            paginate(contacts, HUBSPOT_BATCH_SAVING_SIZE_LIMIT)
+        self._contacts_by_page = paginate(contacts, BATCH_SAVING_SIZE_LIMIT)
 
         self._property_type_by_property_name = \
             {p.name: p.__class__ for p in available_properties}
@@ -378,7 +377,7 @@ class SaveContacts(object):
                 self._property_type_by_property_name,
                 )
             api_call = SuccessfulAPICall(
-                '/contact/batch/',
+                CONTACTS_API_SCRIPT_NAME + '/contact/batch/',
                 'POST',
                 request_body_deserialization=request_body_deserialization,
                 response_body_deserialization=None,
@@ -398,7 +397,7 @@ class GetAllProperties(object):
         response_body_deserialization = \
             _format_response_data_for_properties(self._properties)
         get_all_properties_api_call = SuccessfulAPICall(
-            '/properties',
+            CONTACTS_API_SCRIPT_NAME + '/properties',
             'GET',
             response_body_deserialization=response_body_deserialization,
             )
@@ -419,9 +418,11 @@ class _BaseCreateProperty(object):
 
     @abstractmethod
     def _get_api_call(self):
+        url_path = \
+            CONTACTS_API_SCRIPT_NAME + '/properties/' + self._property.name
         property_data = format_data_for_property(self._property)
         api_call = APICall(
-            '/properties/' + self._property.name,
+            url_path,
             'PUT',
             request_body_deserialization=property_data,
             )
@@ -463,8 +464,10 @@ class DeleteProperty(object):
         self._property_name = property_name
 
     def __call__(self):
+        url_path = \
+            CONTACTS_API_SCRIPT_NAME + '/properties/' + self._property_name
         api_call = SuccessfulAPICall(
-            '/properties/' + self._property_name,
+            url_path,
             'DELETE',
             response_body_deserialization=None,
             )
@@ -486,7 +489,7 @@ class GetAllPropertyGroups(object):
             property_groups_data.append(property_group_data)
 
         api_call = SuccessfulAPICall(
-            '/groups',
+            CONTACTS_API_SCRIPT_NAME + '/groups',
             'GET',
             response_body_deserialization=property_groups_data,
             )
@@ -508,10 +511,12 @@ class _BaseCreatePropertyGroup(object):
 
     @abstractmethod
     def _get_api_call(self):
+        url_path = \
+            CONTACTS_API_SCRIPT_NAME + '/groups/' + self._property_group.name
         request_body_deserialization = \
             format_request_data_for_property_group(self._property_group)
         api_call = APICall(
-            '/groups/' + self._property_group.name,
+            url_path,
             'PUT',
             request_body_deserialization=request_body_deserialization,
             )
@@ -569,19 +574,19 @@ def _format_response_data_for_properties(properties):
 
 class GetAllContactLists(_PaginatedObjectsRetriever):
 
-    _API_CALL_URL_PATH = '/lists'
+    _API_CALL_PATH_INFO = '/lists'
 
     _OBJECT_DATA_KEY = 'lists'
 
     def _get_query_string_args_for_page(self, page_number):
         query_string_args_for_page = \
-            {'offset': HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT * (page_number - 1)}
+            {'offset': BATCH_RETRIEVAL_SIZE_LIMIT * (page_number - 1)}
         return query_string_args_for_page
 
     def _get_response_body_deserialization_for_page(self, page_contact_lists):
         page_number = self._get_current_objects_page_number(page_contact_lists)
         response_body_deserialization_for_page = {
-            'offset': HUBSPOT_BATCH_RETRIEVAL_SIZE_LIMIT * page_number,
+            'offset': BATCH_RETRIEVAL_SIZE_LIMIT * page_number,
             }
         return response_body_deserialization_for_page
 
@@ -617,7 +622,7 @@ class _BaseCreateStaticContactList(object):
             'dynamic': False,
             }
         api_call = APICall(
-            '/lists',
+            CONTACTS_API_SCRIPT_NAME + '/lists',
             'POST',
             request_body_deserialization=request_body_deserialization,
             )
@@ -638,6 +643,7 @@ class CreateStaticContactList(_BaseCreateStaticContactList):
             response_body_deserialization=response_body_deserialization,
             )
         return api_call
+
 
 class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
 
@@ -676,11 +682,12 @@ class _UpdateContactListMembership(object):
 
         request_body_deserialization = {'vids': self._contacts_to_update_vids}
         response_body_deserialization = {'updated': self._updated_contacts_vids}
+        path_info = '/lists/{}/{}'.format(
+            self._contact_list.id,
+            self.url_path_list_action,
+            )
         api_call = SuccessfulAPICall(
-            '/lists/{}/{}'.format(
-                self._contact_list.id,
-                self.url_path_list_action,
-                ),
+            CONTACTS_API_SCRIPT_NAME + path_info,
             'POST',
             request_body_deserialization=request_body_deserialization,
             response_body_deserialization=response_body_deserialization,

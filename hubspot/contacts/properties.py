@@ -16,6 +16,8 @@
 
 from pyrecord import Record
 
+from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
+
 
 Property = Record.create_type(
     'Property',
@@ -52,11 +54,15 @@ PROPERTY_TYPE_BY_NAME = {
     }
 
 
+_PROPERTIES_RETRIEVAL_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/properties'
+
+
 def get_all_properties(connection):
     from hubspot.contacts._schemas.properties import \
         GET_ALL_PROPERTIES_RESPONSE_SCHEMA
 
-    properties_data = connection.send_get_request('/properties')
+    properties_data = \
+        connection.send_get_request(_PROPERTIES_RETRIEVAL_URL_PATH)
     GET_ALL_PROPERTIES_RESPONSE_SCHEMA(properties_data)
 
     properties = []
@@ -74,8 +80,9 @@ def create_property(property_, connection):
 
     request_body_deserialization = format_data_for_property(property_)
 
+    url_path = CONTACTS_API_SCRIPT_NAME + '/properties/' + property_.name
     response_data = connection.send_put_request(
-        '/properties/' + property_.name,
+        url_path,
         request_body_deserialization,
         )
 
@@ -85,7 +92,8 @@ def create_property(property_, connection):
 
 
 def delete_property(property_name, connection):
-    connection.send_delete_request('/properties/' + property_name)
+    url_path = CONTACTS_API_SCRIPT_NAME + '/properties/' + property_name
+    connection.send_delete_request(url_path)
 
 
 def _build_property_from_data(property_data):
