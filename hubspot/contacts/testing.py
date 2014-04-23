@@ -719,3 +719,23 @@ class RemoveContactsFromList(_UpdateContactListMembership):
             contacts_to_remove,
             updated_contacts,
             )
+
+class GetContactsFromList(GetAllContacts):
+
+    _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/all'
+
+    def __init__(
+        self,
+        contact_list,
+        contacts,
+        available_properties,
+        property_names=(),
+        ):
+        super_ = super(GetContactsFromList, self)
+        super_.__init__(contacts, available_properties, property_names)
+
+        self._contact_list = contact_list
+
+    @property
+    def _API_CALL_PATH_INFO(self):
+        return self._API_CALL_PATH_INFO_TEMPLATE.format(self._contact_list.id)
