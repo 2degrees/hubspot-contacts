@@ -25,25 +25,29 @@ class PaginatedDataRetriever(object):
 
         self._schema = self._get_response_data_schema()
 
-    def get_data(self, connection, url_path):
-        data_by_page = self._get_data_by_page(url_path, connection)
+    def get_data(self, connection, path_info, query_string_args=None):
+        data_by_page = \
+            self._get_data_by_page(path_info, query_string_args, connection)
         for page_data in data_by_page:
             for datum in page_data:
                 yield datum
 
-    def _get_data_by_page(self, url_path, connection):
-        query_string_args = {}
+    def _get_data_by_page(self, path_info, query_string_args, connection):
+        if query_string_args:
+            base_query_string_args = query_string_args.copy()
+        else:
+            base_query_string_args = {}
 
         if self._page_size:
-            query_string_args['count'] = self._page_size
+            base_query_string_args['count'] = self._page_size
 
         has_more_pages = True
         next_request_offset_query_string_args = {}
         while has_more_pages:
-            query_string_args = query_string_args.copy()
+            query_string_args = base_query_string_args.copy()
             query_string_args.update(next_request_offset_query_string_args)
 
-            response = connection.send_get_request(url_path, query_string_args)
+            response = connection.send_get_request(path_info, query_string_args)
             response = self._validate_response_data(response)
 
             response_data = response[self._response_data_key]

@@ -15,18 +15,16 @@
 ##############################################################################
 
 from collections import defaultdict
-from datetime import datetime
 from decimal import Decimal
 from json import loads as json_deserialize
 
 from pyrecord import Record
 
 from hubspot.contacts import Contact
-from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
 from hubspot.contacts._property_utils import get_property_type_by_property_name
-from hubspot.contacts._schemas.contacts import CONTACTS_PAGE_SCHEMA
+from hubspot.contacts._schemas.contacts import CONTACT_SCHEMA
 from hubspot.contacts._schemas.lists import \
     CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA
 from hubspot.contacts._schemas.lists import CONTACT_LIST_SCHEMA
@@ -37,9 +35,6 @@ from hubspot.contacts.generic_utils import \
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import NumberProperty
-
-
-_EPOCH_DATETIME = datetime(1970, 1, 1)
 
 
 _CONTACT_LIST_COLLECTION_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/lists'
@@ -145,13 +140,39 @@ def get_all_contacts_by_last_update(
     property_names=(),
     cutoff_datetime=None,
     ):
-    all_contacts_by_last_update = _get_contacts_from_all_pages(
-        '/lists/recently_updated/contacts/recent',
+
+    contacts_data = _get_contacts_data(
         connection,
+        '/lists/recently_updated/contacts/recent',
+        ('vid-offset', 'time-offset'),
         property_names,
-        cutoff_datetime=cutoff_datetime,
         )
-    return all_contacts_by_last_update
+
+    if cutoff_datetime:
+        cutoff_timestamp = \
+            convert_date_to_timestamp_in_milliseconds(cutoff_datetime)
+    else:
+        cutoff_timestamp = None
+
+    property_type_by_property_name = \
+        get_property_type_by_property_name(connection)
+
+    seen_contact_vids = set()
+    for contact_data in contacts_data:
+        contact = _build_contact_from_data(
+            contact_data,
+            property_type_by_property_name,
+            )
+
+        if contact.vid in seen_contact_vids:
+            continue
+
+        seen_contact_vids.add(contact.vid)
+
+        if cutoff_timestamp and contact_data['addedAt'] < cutoff_timestamp:
+            raise StopIteration()
+
+        yield contact
 
 
 def get_all_contacts_from_list(connection, contact_list, property_names=()):
@@ -163,66 +184,48 @@ def get_all_contacts_from_list(connection, contact_list, property_names=()):
     return contacts_from_list
 
 
-def _get_contacts_from_all_pages(
-    path_info,
-    connection,
-    property_names,
-    cutoff_datetime=None,
-    ):
+def _get_contacts_from_all_pages(path_info, connection, property_names):
     property_type_by_property_name = \
         get_property_type_by_property_name(connection)
 
-    if cutoff_datetime:
-        cutoff_timestamp = \
-            convert_date_to_timestamp_in_milliseconds(cutoff_datetime)
-    else:
-        cutoff_timestamp = None
+    contacts_data = _get_contacts_data(
+        connection,
+        path_info,
+        ['vid-offset'],
+        property_names,
+        )
 
-    seen_contact_vids = set()
-    contacts_data_by_page = \
-        _get_contacts_data_by_page(path_info, connection, property_names)
-    for contacts_data in contacts_data_by_page:
-        for contact_data in contacts_data:
-            if cutoff_timestamp and contact_data['addedAt'] < cutoff_timestamp:
-                raise StopIteration()
-
-            contact = _build_contact_from_data(
-                contact_data,
-                property_type_by_property_name,
-                )
-            if contact.vid in seen_contact_vids:
-                continue
-            seen_contact_vids.add(contact.vid)
-
-            yield contact
+    contacts = \
+        _build_contacts_from_data(contacts_data, property_type_by_property_name)
+    return contacts
 
 
-def _get_contacts_data_by_page(path_info, connection, property_names):
-    base_query_string_args = {'count': BATCH_RETRIEVAL_SIZE_LIMIT}
+def _get_contacts_data(connection, path_info, pagination_keys, property_names):
     if property_names:
-        base_query_string_args['property'] = property_names
-    has_more_pages = True
-    last_contact_vid = None
-    last_contact_addition_timestamp = None
-    while has_more_pages:
-        query_string_args = base_query_string_args.copy()
-        if last_contact_vid:
-            query_string_args['vidOffset'] = last_contact_vid
-        if last_contact_addition_timestamp:
-            query_string_args['timeOffset'] = last_contact_addition_timestamp
+        query_string_args = {'property': property_names}
+    else:
+        query_string_args = None
 
-        url_path = CONTACTS_API_SCRIPT_NAME + path_info
-        contacts_data = connection.send_get_request(url_path, query_string_args)
-        contacts_data = CONTACTS_PAGE_SCHEMA(contacts_data)
+    data_retriever = PaginatedDataRetriever('contacts', pagination_keys)
+    url_path = CONTACTS_API_SCRIPT_NAME + path_info
+    contacts_data = \
+        data_retriever.get_data(connection, url_path, query_string_args)
+    return contacts_data
 
-        yield contacts_data['contacts']
 
-        last_contact_vid = contacts_data['vid-offset']
-        last_contact_addition_timestamp = contacts_data.get('time-offset')
-        has_more_pages = contacts_data['has-more']
+def _build_contacts_from_data(contacts_data, property_type_by_property_name):
+    for contact_data in contacts_data:
+        contact = _build_contact_from_data(
+            contact_data,
+            property_type_by_property_name,
+            )
+
+        yield contact
 
 
 def _build_contact_from_data(contact_data, property_type_by_property_name):
+    contact_data = CONTACT_SCHEMA(contact_data)
+
     canonical_profile_data, related_profiles_data = \
         _get_profiles_data_from_contact_data(contact_data)
     email_address = \

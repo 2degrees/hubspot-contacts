@@ -320,8 +320,11 @@ class GetAllContactsByLastUpdate(GetAllContacts):
 
         if page_contacts:
             page_last_contact = page_contacts[-1]
-            response_body_deserialization_for_page['time-offset'] = \
+            time_offset = \
                 self._get_contact_added_at_timestamp(page_last_contact)
+        else:
+            time_offset = 0
+        response_body_deserialization_for_page['time-offset'] = time_offset
 
         return response_body_deserialization_for_page
 
