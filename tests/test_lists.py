@@ -36,6 +36,7 @@ from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
 from hubspot.contacts.lists import ContactList
 from hubspot.contacts.lists import add_contacts_to_list
 from hubspot.contacts.lists import create_static_contact_list
+from hubspot.contacts.lists import delete_contact_list
 from hubspot.contacts.lists import get_all_contact_lists
 from hubspot.contacts.lists import get_all_contacts
 from hubspot.contacts.lists import get_all_contacts_by_last_update
@@ -43,6 +44,7 @@ from hubspot.contacts.lists import get_all_contacts_from_list
 from hubspot.contacts.lists import remove_contacts_from_list
 from hubspot.contacts.testing import AddContactsToList
 from hubspot.contacts.testing import CreateStaticContactList
+from hubspot.contacts.testing import DeleteContactList
 from hubspot.contacts.testing import GetAllContactLists
 from hubspot.contacts.testing import GetAllContacts
 from hubspot.contacts.testing import GetAllContactsByLastUpdate
@@ -170,6 +172,12 @@ def _simulate_create_static_contact_list_with_unsupported_response():
         del created_contact_list_data['dynamic']
 
     return api_calls
+
+
+class test_contact_list_deletion():
+    simulator = DeleteContactList(_STUB_CONTACT_LIST.id)
+    with MockPortalConnection(simulator) as connection:
+        delete_contact_list(_STUB_CONTACT_LIST.id, connection)
 
 
 class TestAddingContactsToList(object):

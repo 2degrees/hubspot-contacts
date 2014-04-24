@@ -664,6 +664,25 @@ class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
         return api_call
 
 
+class DeleteContactList(object):
+
+    def __init__(self, contact_list_id):
+        super(DeleteContactList, self).__init__()
+        self._contact_list_id = contact_list_id
+
+    def __call__(self):
+        url_path = '{}/lists/{}'.format(
+            CONTACTS_API_SCRIPT_NAME,
+            self._contact_list_id,
+            )
+        api_call = SuccessfulAPICall(
+            url_path,
+            'DELETE',
+            response_body_deserialization=None,
+            )
+        return [api_call]
+
+
 class _UpdateContactListMembership(object):
 
     __metaclass__ = ABCMeta
