@@ -658,4 +658,3 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
             **kwargs
             )
         return retrieved_contact
-

@@ -50,5 +50,3 @@ def save_contacts(contacts, connection):
             _CONTACTS_SAVING_URL_PATH,
             contacts_batch_data,
             )
-
-
