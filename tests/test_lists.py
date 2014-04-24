@@ -174,7 +174,7 @@ def _simulate_create_static_contact_list_with_unsupported_response():
     return api_calls
 
 
-class test_contact_list_deletion():
+def test_contact_list_deletion():
     simulator = DeleteContactList(_STUB_CONTACT_LIST.id)
     with MockPortalConnection(simulator) as connection:
         delete_contact_list(_STUB_CONTACT_LIST.id, connection)
