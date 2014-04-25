@@ -174,10 +174,34 @@ def _simulate_create_static_contact_list_with_unsupported_response():
     return api_calls
 
 
-def test_contact_list_deletion():
-    simulator = DeleteContactList(_STUB_CONTACT_LIST.id)
-    with MockPortalConnection(simulator) as connection:
-        delete_contact_list(_STUB_CONTACT_LIST.id, connection)
+class TestContactListDeletion(object):
+
+    def test_successful_deletion(self):
+        simulator = DeleteContactList(_STUB_CONTACT_LIST.id)
+        with MockPortalConnection(simulator) as connection:
+            delete_contact_list(_STUB_CONTACT_LIST.id, connection)
+
+    def test_valid_contact_list_id(self):
+        """
+        It must be possible to cast the ID of the contact list to an integer,
+        since these are the only valid types of ID.
+
+        """
+        valid_contact_list_id = '123'
+        simulator = DeleteContactList(valid_contact_list_id)
+        with MockPortalConnection(simulator) as connection:
+            delete_contact_list(valid_contact_list_id, connection)
+
+    def test_invalid_contact_list_id(self):
+        """
+        When the contact list ID cannot be cast to an integer, the error
+        is allowed to propagate.
+
+        """
+        with MockPortalConnection() as connection:
+            with assert_raises(ValueError):
+                invalid_contact_list_id = 'not an integer'
+                delete_contact_list(invalid_contact_list_id, connection)
 
 
 class TestAddingContactsToList(object):
