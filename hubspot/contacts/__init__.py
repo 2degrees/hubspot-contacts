@@ -14,6 +14,8 @@
 #
 ##############################################################################
 
+from itertools import chain
+
 from pyrecord import Record
 
 from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
@@ -37,11 +39,16 @@ _CONTACTS_SAVING_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/contact/batch/'
 
 
 def save_contacts(contacts, connection):
+    contacts_batches = ipaginate(contacts, BATCH_SAVING_SIZE_LIMIT)
+
+    contacts_first_batch = next(contacts_batches, None)
+    if not contacts_first_batch:
+        return
+
     property_type_by_property_name = \
         get_property_type_by_property_name(connection)
 
-    contacts_batches = ipaginate(contacts, BATCH_SAVING_SIZE_LIMIT)
-    for contacts_batch in contacts_batches:
+    for contacts_batch in chain([contacts_first_batch], contacts_batches):
         contacts_batch_data = format_contacts_data_for_saving(
             contacts_batch,
             property_type_by_property_name,

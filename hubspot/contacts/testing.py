@@ -368,6 +368,9 @@ class SaveContacts(object):
             GetAllProperties(available_properties)
 
     def __call__(self):
+        if not self._contacts_by_page:
+            return []
+
         api_calls = self._available_properties_simulator()
 
         for batch_contacts in self._contacts_by_page:
