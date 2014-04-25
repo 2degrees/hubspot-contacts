@@ -104,7 +104,7 @@ class _PaginatedObjectsRetriever(object):
 
     @abstractmethod
     def _get_query_string_args_for_page(self, page_number):
-        pass
+        pass  # pragma: no cover
 
     def _get_response_body_deserialization(self, page_objects):
         page_number = self._get_current_objects_page_number(page_objects)
@@ -125,7 +125,7 @@ class _PaginatedObjectsRetriever(object):
 
     @abstractmethod
     def _get_response_body_deserialization_for_page(self, page_objects):
-        pass
+        pass  # pragma: no cover
 
     def _get_current_objects_page_number(self, page_objects):
         if self._objects_by_page:
@@ -136,7 +136,7 @@ class _PaginatedObjectsRetriever(object):
 
     @abstractmethod
     def _get_objects_data(self, objects):
-        pass
+        pass  # pragma: no cover
 
 
 class GetAllContacts(_PaginatedObjectsRetriever):
@@ -203,7 +203,6 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         for property_name in self._property_names:
             if property_name not in contact_properties:
                 continue
-
             property_value = \
                 self._get_property_value(property_name, contact_properties)
             contact_properties_data[property_name] = {
@@ -215,7 +214,6 @@ class GetAllContacts(_PaginatedObjectsRetriever):
     @staticmethod
     def _get_property_value(property_name, contact_properties):
         property_value = contact_properties[property_name]
-
         if isinstance(property_value, bool):
             property_value = json_serialize(property_value)
         elif isinstance(property_value, datetime):

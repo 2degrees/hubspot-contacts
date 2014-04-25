@@ -506,6 +506,56 @@ class _BaseGettingContactsTestCase(object):
         retrieved_contact = retrieved_contacts[0]
         return retrieved_contact
 
+    def test_simulator_type_casting(self):
+        enumeration_property_value = \
+            STUB_ENUMERATION_PROPERTY.options.values()[0]
+
+        properties_and_values = (
+            (STUB_BOOLEAN_PROPERTY, True),
+            (STUB_DATETIME_PROPERTY, datetime(2014, 1, 1, 7, 57)),
+            (STUB_NUMBER_PROPERTY, 42),
+            (STUB_STRING_PROPERTY, 'string'),
+            (STUB_ENUMERATION_PROPERTY, enumeration_property_value),
+            )
+
+        for property_, property_value in properties_and_values:
+            retrieved_contact = \
+                self._retrieve_contact_with_specialized_property(
+                    property_,
+                    property_value,
+                    )
+            retrieved_property_value = \
+                retrieved_contact.properties[property_.name]
+            yield eq_, property_value, retrieved_property_value
+
+    def _retrieve_contact_with_specialized_property(
+        self,
+        property_,
+        property_value,
+        **kwargs
+        ):
+        simulator_contact = make_contact(1, {property_.name: property_value})
+        property_names = [property_.name]
+        connection = self._make_connection_for_contacts(
+            contacts=[simulator_contact],
+            available_property=property_,
+            property_names=property_names,
+            **kwargs
+            )
+
+        with connection:
+            # Trigger API calls by consuming iterator
+            retrieved_contacts = list(
+                self._RETRIEVER(
+                    connection,
+                    property_names=property_names,
+                    **kwargs
+                    ),
+                )
+
+        retrieved_contact = retrieved_contacts[0]
+        return retrieved_contact
+
     def test_property_type_casting_for_unknown_property(self):
         simulator_contact = make_contact(1, {'p1': 'yes'})
         expected_contact = simulator_contact.copy()
@@ -687,6 +737,21 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
         retrieved_contact = super_._retrieve_contact_with_stub_property(
             property_definition,
             property_value_raw,
+            **kwargs
+            )
+        return retrieved_contact
+
+    def _retrieve_contact_with_specialized_property(
+        self,
+        property_,
+        property_value,
+        **kwargs
+        ):
+        kwargs.setdefault('contact_list', _STUB_CONTACT_LIST)
+        super_ = super(TestGettingAllContactsFromList, self)
+        retrieved_contact = super_._retrieve_contact_with_specialized_property(
+            property_,
+            property_value,
             **kwargs
             )
         return retrieved_contact
