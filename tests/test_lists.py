@@ -410,6 +410,8 @@ class _BaseGettingContactsTestCase(object):
 
     _SIMULATOR_CLASS = abstractproperty()
 
+    _CONTACT_LIST = abstractproperty()
+
     def test_no_contacts(self):
         self._check_retrieved_contacts_match([], [])
 
@@ -468,7 +470,7 @@ class _BaseGettingContactsTestCase(object):
             ]
 
         for property_, raw_value, expected_value in test_cases_data:
-            retrieved_contact = self._retrieve_contact_with_stub_property(
+            retrieved_contact = self._retrieve_contact_with_specified_property(
                 property_,
                 raw_value,
                 )
@@ -476,35 +478,6 @@ class _BaseGettingContactsTestCase(object):
                 retrieved_contact.properties[property_.name]
 
             yield eq_, expected_value, retrieved_property_value
-
-    def _retrieve_contact_with_stub_property(
-        self,
-        property_definition,
-        property_value_raw,
-        **kwargs
-        ):
-        simulator_contact = \
-            make_contact(1, {property_definition.name: property_value_raw})
-        property_names = [property_definition.name]
-        connection = self._make_connection_for_contacts(
-            contacts=[simulator_contact],
-            available_property=property_definition,
-            property_names=property_names,
-            **kwargs
-            )
-
-        with connection:
-            # Trigger API calls by consuming iterator
-            retrieved_contacts = list(
-                self._RETRIEVER(
-                    connection,
-                    property_names=property_names,
-                    **kwargs
-                    ),
-                )
-
-        retrieved_contact = retrieved_contacts[0]
-        return retrieved_contact
 
     def test_simulator_type_casting(self):
         enumeration_property_value = \
@@ -520,7 +493,7 @@ class _BaseGettingContactsTestCase(object):
 
         for property_, property_value in properties_and_values:
             retrieved_contact = \
-                self._retrieve_contact_with_specialized_property(
+                self._retrieve_contact_with_specified_property(
                     property_,
                     property_value,
                     )
@@ -528,17 +501,22 @@ class _BaseGettingContactsTestCase(object):
                 retrieved_contact.properties[property_.name]
             yield eq_, property_value, retrieved_property_value
 
-    def _retrieve_contact_with_specialized_property(
+    def _retrieve_contact_with_specified_property(
         self,
-        property_,
+        property_definition,
         property_value,
         **kwargs
         ):
-        simulator_contact = make_contact(1, {property_.name: property_value})
-        property_names = [property_.name]
+        property_names = [property_definition.name]
+
+        if self._CONTACT_LIST:
+            kwargs['contact_list'] = self._CONTACT_LIST
+
+        simulator_contact = \
+            make_contact(1, {property_definition.name: property_value})
         connection = self._make_connection_for_contacts(
             contacts=[simulator_contact],
-            available_property=property_,
+            available_property=property_definition,
             property_names=property_names,
             **kwargs
             )
@@ -573,6 +551,10 @@ class _BaseGettingContactsTestCase(object):
         expected_contacts,
         **kwargs
         ):
+
+        if self._CONTACT_LIST:
+            kwargs['contact_list'] = self._CONTACT_LIST
+
         connection = \
             self._make_connection_for_contacts(simulator_contacts, **kwargs)
 
@@ -619,6 +601,8 @@ class TestGettingAllContacts(_BaseGettingContactsTestCase):
 
     _SIMULATOR_CLASS = GetAllContacts
 
+    _CONTACT_LIST = None
+
     def test_exceeding_pagination_size(self):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
@@ -630,6 +614,8 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
     _RETRIEVER = staticmethod(get_all_contacts_by_last_update)
 
     _SIMULATOR_CLASS = GetAllContactsByLastUpdate
+
+    _CONTACT_LIST = None
 
     def test_exceeding_pagination_size(self):
         contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
@@ -705,53 +691,9 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
 
     _SIMULATOR_CLASS = GetContactsFromList
 
+    _CONTACT_LIST = _STUB_CONTACT_LIST
+
     def test_exceeding_pagination_size(self):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
         self._check_retrieved_contacts_match(contacts, contacts)
-
-    def _check_retrieved_contacts_match(
-        self,
-        simulator_contacts,
-        expected_contacts,
-        **kwargs
-        ):
-        kwargs.setdefault('contact_list', _STUB_CONTACT_LIST)
-
-        super_ = super(TestGettingAllContactsFromList, self)
-        super_._check_retrieved_contacts_match(
-            simulator_contacts,
-            expected_contacts,
-            **kwargs
-            )
-
-    def _retrieve_contact_with_stub_property(
-        self,
-        property_definition,
-        property_value_raw,
-        **kwargs
-        ):
-        kwargs.setdefault('contact_list', _STUB_CONTACT_LIST)
-
-        super_ = super(TestGettingAllContactsFromList, self)
-        retrieved_contact = super_._retrieve_contact_with_stub_property(
-            property_definition,
-            property_value_raw,
-            **kwargs
-            )
-        return retrieved_contact
-
-    def _retrieve_contact_with_specialized_property(
-        self,
-        property_,
-        property_value,
-        **kwargs
-        ):
-        kwargs.setdefault('contact_list', _STUB_CONTACT_LIST)
-        super_ = super(TestGettingAllContactsFromList, self)
-        retrieved_contact = super_._retrieve_contact_with_specialized_property(
-            property_,
-            property_value,
-            **kwargs
-            )
-        return retrieved_contact
