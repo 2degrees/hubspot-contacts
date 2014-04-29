@@ -571,6 +571,23 @@ def _format_response_data_for_properties(properties):
     return properties_data
 
 
+class DeletePropertyGroup(object):
+
+    def __init__(self, property_group_name):
+        super(DeletePropertyGroup, self).__init__()
+        self._property_group_name = property_group_name
+
+    def __call__(self):
+        url_path = \
+            CONTACTS_API_SCRIPT_NAME + '/groups/' + self._property_group_name
+        api_call = SuccessfulAPICall(
+            url_path,
+            'DELETE',
+            response_body_deserialization=None,
+            )
+        return [api_call]
+
+
 class GetAllContactLists(_PaginatedObjectsRetriever):
 
     _API_CALL_PATH_INFO = '/lists'

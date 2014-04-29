@@ -14,9 +14,9 @@
 #
 ##############################################################################
 
+from nose.tools import assert_is_none
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
-
 from hubspot.connection.exc import HubspotClientError
 from hubspot.connection.testing import MockPortalConnection
 
@@ -24,8 +24,10 @@ from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.property_groups import PropertyGroup
 from hubspot.contacts.property_groups import create_property_group
+from hubspot.contacts.property_groups import delete_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
 from hubspot.contacts.testing import CreatePropertyGroup
+from hubspot.contacts.testing import DeletePropertyGroup
 from hubspot.contacts.testing import GetAllPropertyGroups
 from hubspot.contacts.testing import UnsuccessfulCreatePropertyGroup
 
@@ -108,3 +110,10 @@ class TestGettingAllPropertyGroups(object):
             retrieved_property_groups = get_all_property_groups(connection)
 
         eq_(property_groups, retrieved_property_groups)
+
+
+def test_property_group_deletion():
+    property_group_name = 'property_group_name'
+    simulator = DeletePropertyGroup(property_group_name)
+    with MockPortalConnection(simulator) as connection:
+        assert_is_none(delete_property_group(property_group_name, connection))

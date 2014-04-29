@@ -93,3 +93,7 @@ def _build_property_group_from_data(property_group_data):
         property_group.properties = properties
 
     return property_group
+
+def delete_property_group(property_group_name, connection):
+    url_path = CONTACTS_API_SCRIPT_NAME + '/groups/' + property_group_name
+    connection.send_delete_request(url_path)
