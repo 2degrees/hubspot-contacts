@@ -131,7 +131,7 @@ class TestSavingContacts(object):
         property_value,
         exc_message_template,
         ):
-        saved_contacts = []
+        saved_contacts = make_contacts(1)
         connection = \
             self._make_connection_for_contacts(saved_contacts, property_)
 
