@@ -240,6 +240,53 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         return contact_profiles_data
 
 
+class UnsuccessfulGetAllContacts(GetAllContacts):
+
+    def __init__(
+        self,
+        contacts,
+        successful_api_call_count,
+        exception,
+        available_properties,
+        property_names=(),
+        ):
+
+        minimum_contact_count = \
+            BATCH_RETRIEVAL_SIZE_LIMIT * successful_api_call_count
+        are_no_contacts = minimum_contact_count == 0
+        assert are_no_contacts or minimum_contact_count < len(contacts), \
+            'Need at least {} contacts to satisfy successful API calls'.format(
+                minimum_contact_count,
+                )
+
+        super(UnsuccessfulGetAllContacts, self).__init__(
+            contacts,
+            available_properties,
+            property_names,
+            )
+        self._expection = exception
+        self._successful_api_call_count = successful_api_call_count
+
+    def __call__(self):
+        api_call_cutoff_index = self._successful_api_call_count + 1
+        get_all_contacts_api_calls = \
+            super(UnsuccessfulGetAllContacts, self).__call__()
+
+        successful_api_calls = \
+            get_all_contacts_api_calls[:api_call_cutoff_index]
+
+        failing_api_call = get_all_contacts_api_calls[api_call_cutoff_index]
+        unsuccessful_api_call = UnsuccessfulAPICall(
+            failing_api_call.url_path,
+            failing_api_call.http_method,
+            failing_api_call.query_string_args,
+            exception=self._expection,
+            )
+
+        api_calls = successful_api_calls + [unsuccessful_api_call]
+        return api_calls
+
+
 class GetAllContactsByLastUpdate(GetAllContacts):
 
     _API_CALL_PATH_INFO = '/lists/recently_updated/contacts/recent'

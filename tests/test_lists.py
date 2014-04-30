@@ -23,6 +23,7 @@ from decimal import Decimal
 from inspect import isgenerator
 
 from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.exc import HubspotServerError
 from hubspot.connection.testing import MockPortalConnection
 from nose.tools import assert_items_equal
 from nose.tools import assert_raises
@@ -51,6 +52,7 @@ from hubspot.contacts.testing import GetAllContactsByLastUpdate
 from hubspot.contacts.testing import GetContactsFromList
 from hubspot.contacts.testing import RemoveContactsFromList
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
+from hubspot.contacts.testing import UnsuccessfulGetAllContacts
 
 from tests._utils import make_contact
 from tests._utils import make_contacts
@@ -607,6 +609,61 @@ class TestGettingAllContacts(_BaseGettingContactsTestCase):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
         self._check_retrieved_contacts_match(contacts, contacts)
+
+
+class TestUnsuccessfulGettingAllContacts(object):
+
+    def test_no_successfully_retrieved_contacts(self):
+        connection = self._make_connection([], 0)
+        with connection:
+            with assert_raises(HubspotServerError):
+                list(get_all_contacts(connection))
+
+    def test_successful_first_page(self):
+        contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+
+        connection = self._make_connection(contacts, 1)
+        with connection:
+            retrieved_contacts = get_all_contacts(connection)
+
+            first_page_contacts = []
+            for contact_count, contact in enumerate(retrieved_contacts, 1):
+                first_page_contacts.append(contact)
+                if contact_count == BATCH_RETRIEVAL_SIZE_LIMIT:
+                    break
+
+            eq_(contacts[:BATCH_RETRIEVAL_SIZE_LIMIT], first_page_contacts)
+
+            with assert_raises(HubspotServerError):
+                next(retrieved_contacts)
+
+    def test_insuficient_successful_contacts(self):
+        # Below the boundary
+        with assert_raises(AssertionError):
+            self._make_simulator(
+                make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT - 1),
+                1,
+                )
+
+        # At the boundary
+        with assert_raises(AssertionError):
+            self._make_simulator(make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT), 1)
+
+    @classmethod
+    def _make_connection(cls, contacts, successful_api_call_count):
+        simulator = cls._make_simulator(contacts, successful_api_call_count)
+        connection = MockPortalConnection(simulator)
+        return connection
+
+    @staticmethod
+    def _make_simulator(contacts, successful_api_call_count):
+        simulator = UnsuccessfulGetAllContacts(
+            contacts,
+            successful_api_call_count,
+            HubspotServerError(':(', 500),
+            [STUB_STRING_PROPERTY],
+            )
+        return simulator
 
 
 class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
