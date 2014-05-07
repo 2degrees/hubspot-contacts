@@ -243,7 +243,7 @@ def _build_contact_from_data(contact_data, property_type_by_property_name):
     properties = {}
     for property_name, property_value in contact_data['properties'].items():
         property_type = property_type_by_property_name.get(property_name)
-        if property_type:
+        if property_type and property_value:
             converter = \
                 _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
             properties[property_name] = converter(property_value)

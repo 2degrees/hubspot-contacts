@@ -26,6 +26,7 @@ from hubspot.connection.exc import HubspotClientError
 from hubspot.connection.exc import HubspotServerError
 from hubspot.connection.testing import MockPortalConnection
 from nose.tools import assert_items_equal
+from nose.tools import assert_not_in
 from nose.tools import assert_raises
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
@@ -481,6 +482,18 @@ class _BaseGettingContactsTestCase(object):
 
             yield eq_, expected_value, retrieved_property_value
 
+    def test_unset_property_type_casting(self):
+        properties = (
+            STUB_BOOLEAN_PROPERTY,
+            STUB_DATETIME_PROPERTY,
+            STUB_ENUMERATION_PROPERTY,
+            STUB_NUMBER_PROPERTY,
+            STUB_STRING_PROPERTY,
+            )
+
+        for property_definition in properties:
+            yield self._assert_unset_property_absent, property_definition
+
     def test_simulator_type_casting(self):
         enumeration_property_value = \
             STUB_ENUMERATION_PROPERTY.options.values()[0]
@@ -535,6 +548,13 @@ class _BaseGettingContactsTestCase(object):
 
         retrieved_contact = retrieved_contacts[0]
         return retrieved_contact
+
+    def _assert_unset_property_absent(self, property_definition):
+        retrieved_contact = self._retrieve_contact_with_specified_property(
+            property_definition,
+            '',
+            )
+        assert_not_in(property_definition.name, retrieved_contact.properties)
 
     def test_property_type_casting_for_unknown_property(self):
         simulator_contact = make_contact(1, {'p1': 'yes'})
