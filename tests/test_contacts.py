@@ -93,6 +93,23 @@ class TestSavingContacts(object):
                 expected_value,
                 )
 
+    def test_unsetting_properties(self):
+        properties = (
+            STUB_BOOLEAN_PROPERTY,
+            STUB_DATETIME_PROPERTY,
+            STUB_ENUMERATION_PROPERTY,
+            STUB_NUMBER_PROPERTY,
+            STUB_STRING_PROPERTY,
+            )
+
+        for property_definition in properties:
+            yield (
+                self._assert_property_value_cast_equals,
+                property_definition,
+                None,
+                '',
+                )
+
     def _assert_property_value_cast_equals(
         self,
         property_definition,

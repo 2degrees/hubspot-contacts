@@ -66,9 +66,12 @@ def _format_contact_properties_for_saving(
 
 
 def _serialize_property_value(property_value, property_type):
-    converter = _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
-    property_value_cast = converter(property_value)
-    property_value_serialized = unicode(property_value_cast)
+    if property_value is None:
+        property_value_serialized = ''
+    else:
+        converter = _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
+        property_value_cast = converter(property_value)
+        property_value_serialized = unicode(property_value_cast)
     return property_value_serialized
 
 
