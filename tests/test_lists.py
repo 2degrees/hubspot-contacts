@@ -45,6 +45,7 @@ from hubspot.contacts.lists import get_all_contacts
 from hubspot.contacts.lists import get_all_contacts_by_last_update
 from hubspot.contacts.lists import get_all_contacts_from_list
 from hubspot.contacts.lists import remove_contacts_from_list
+from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.testing import AddContactsToList
 from hubspot.contacts.testing import CreateStaticContactList
 from hubspot.contacts.testing import DeleteContactList
@@ -72,6 +73,15 @@ _STUB_CONTACT_LIST = ContactList(1, 'atestlist', False)
 _STUB_CONTACT_1 = Contact(1, 'dude@bro.com', {}, [])
 
 _STUB_CONTACT_2 = Contact(2, 'bro@bro.com', {}, [])
+
+
+_EMAIL_PROPERTY = StringProperty(
+    'email',
+    'Email address',
+    'The email address',
+    'contactinformation',
+    'text',
+    )
 
 
 
@@ -446,6 +456,45 @@ class _BaseGettingContactsTestCase(object):
             property_names=[STUB_PROPERTY.name],
             )
 
+    def test_getting_email_address_as_property(self):
+        contact_with_email = make_contact(1)
+        contact_with_no_email = make_contact(2)
+        contact_with_no_email.email_address = None
+        simulator_contacts = [contact_with_email, contact_with_no_email]
+
+        expected_contacts = \
+            _get_contacts_with_email_property(simulator_contacts)
+
+        kwargs = self._get_kwargs_for_email_property()
+
+        connection = self._make_connection_for_contacts(
+            simulator_contacts,
+            available_property=_EMAIL_PROPERTY,
+            **self._get_kwargs_for_email_property()
+            )
+
+        with connection:
+            # Trigger API calls by consuming iterator
+            retrieved_contacts = list(self._RETRIEVER(connection, **kwargs))
+
+        eq_(list(expected_contacts), retrieved_contacts)
+
+    def test_conflicting_email_address_property(self):
+        contact = make_contact(1, {_EMAIL_PROPERTY.name: 'other@example.com'})
+        with assert_raises(AssertionError):
+            self._make_connection_for_contacts(
+                [contact],
+                available_property=_EMAIL_PROPERTY,
+                **self._get_kwargs_for_email_property()
+                )
+
+    @classmethod
+    def _get_kwargs_for_email_property(cls):
+        kwargs = {'property_names': [_EMAIL_PROPERTY.name]}
+        if cls._CONTACT_LIST:
+            kwargs['contact_list'] = cls._CONTACT_LIST
+        return kwargs
+
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
         contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT)
@@ -620,6 +669,23 @@ def _get_contacts_with_stub_property(contacts):
         contacts_with_stub_property.append(contact_with_stub_property)
 
     return contacts_with_stub_property
+
+
+def _get_contacts_with_email_property(simulator_contacts):
+    contacts_with_email_property = []
+    for contact in simulator_contacts:
+        contact_properties = {}
+        if contact.email_address:
+            contact_properties['email'] = contact.email_address
+        contact_with_email_property = Contact(
+            contact.vid,
+            contact.email_address,
+            contact_properties,
+            [],
+            )
+        contacts_with_email_property.append(contact_with_email_property)
+
+    return contacts_with_email_property
 
 
 class TestGettingAllContacts(_BaseGettingContactsTestCase):

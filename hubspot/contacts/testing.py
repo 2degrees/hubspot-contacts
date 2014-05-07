@@ -187,7 +187,7 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         contacts_data = []
         for contact in contacts:
             contact_properties_data = \
-                self._get_contact_properties_data(contact.properties)
+                self._get_contact_properties_data(contact)
             contact_profiles_data = self._get_contact_profiles_data(contact)
             contact_data = {
                 'vid': contact.vid,
@@ -199,13 +199,19 @@ class GetAllContacts(_PaginatedObjectsRetriever):
 
         return contacts_data
 
-    def _get_contact_properties_data(self, contact_properties):
+    def _get_contact_properties_data(self, contact):
+        contact_properties = contact.properties
         contact_properties_data = {}
         for property_name in self._property_names:
-            if property_name not in contact_properties:
+            if property_name == 'email' and contact.email_address:
+                if 'email' in contact_properties:
+                    assert contact.email_address == contact_properties['email']
+                property_value = contact.email_address
+            elif property_name not in contact_properties:
                 continue
-            property_value = \
-                self._get_property_value(property_name, contact_properties)
+            else:
+                property_value = \
+                    self._get_property_value(property_name, contact_properties)
             contact_properties_data[property_name] = {
                 'value': property_value,
                 'versions': [],
