@@ -3,7 +3,9 @@ python: '2.7'
 before_install: pip install -e git+https://github.com/2degrees/hubspot-connection.git@2b8611cff099e450738054621eae97d6f4306589#egg=hubspot_connection-master
 install: pip install .
 before_script: pip install -r tests/requirements.txt
-script: coverage run --source=hubspot.contacts setup.py test
+script:
+  - coverage run --source=hubspot.contacts setup.py test
+  - nosetests tests/smoke_tests.py
 after_success: coveralls
 env:
   global:
