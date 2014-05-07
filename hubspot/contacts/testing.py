@@ -24,6 +24,7 @@ so doing so would mean testing the tests.
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from datetime import date
 from datetime import datetime
 from json import dumps as json_serialize
 from math import ceil
@@ -216,7 +217,7 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         property_value = contact_properties[property_name]
         if isinstance(property_value, bool):
             property_value = json_serialize(property_value)
-        elif isinstance(property_value, datetime):
+        elif isinstance(property_value, date):
             property_value = \
                 convert_date_to_timestamp_in_milliseconds(property_value)
 

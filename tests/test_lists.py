@@ -17,6 +17,7 @@
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
@@ -58,6 +59,7 @@ from hubspot.contacts.testing import UnsuccessfulGetAllContacts
 from tests._utils import make_contact
 from tests._utils import make_contacts
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
+from tests.test_properties import STUB_DATE_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
 from tests.test_properties import STUB_ENUMERATION_PROPERTY
 from tests.test_properties import STUB_NUMBER_PROPERTY
@@ -462,6 +464,7 @@ class _BaseGettingContactsTestCase(object):
     def test_property_type_casting(self):
         test_cases_data = [
             (STUB_BOOLEAN_PROPERTY, 'true', True),
+            (STUB_DATE_PROPERTY, u'1396569600000', date(2014, 4, 4)),
             (
                 STUB_DATETIME_PROPERTY,
                 u'1396607280140',
@@ -485,6 +488,7 @@ class _BaseGettingContactsTestCase(object):
     def test_unset_property_type_casting(self):
         properties = (
             STUB_BOOLEAN_PROPERTY,
+            STUB_DATE_PROPERTY,
             STUB_DATETIME_PROPERTY,
             STUB_ENUMERATION_PROPERTY,
             STUB_NUMBER_PROPERTY,
@@ -500,6 +504,7 @@ class _BaseGettingContactsTestCase(object):
 
         properties_and_values = (
             (STUB_BOOLEAN_PROPERTY, True),
+            (STUB_DATE_PROPERTY, date(2014, 1, 1)),
             (STUB_DATETIME_PROPERTY, datetime(2014, 1, 1, 7, 57)),
             (STUB_NUMBER_PROPERTY, 42),
             (STUB_STRING_PROPERTY, 'string'),

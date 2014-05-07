@@ -31,8 +31,11 @@ from hubspot.contacts._schemas.lists import CONTACT_LIST_SCHEMA
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
 from hubspot.contacts.generic_utils import \
+    convert_timestamp_in_milliseconds_to_date
+from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_datetime
 from hubspot.contacts.properties import BooleanProperty
+from hubspot.contacts.properties import DateProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import NumberProperty
 
@@ -44,6 +47,7 @@ _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
     lambda: unicode,
     {
         BooleanProperty: json_deserialize,
+        DateProperty: convert_timestamp_in_milliseconds_to_date,
         DatetimeProperty: convert_timestamp_in_milliseconds_to_datetime,
         NumberProperty: Decimal,
         },

@@ -53,6 +53,13 @@ def convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds):
     return timestamp_as_datetime
 
 
+def convert_timestamp_in_milliseconds_to_date(timestamp_milliseconds):
+    timestamp_datetime = \
+        convert_timestamp_in_milliseconds_to_datetime(timestamp_milliseconds)
+    timestamp_date = timestamp_datetime.date()
+    return timestamp_date
+
+
 def paginate(iterable, page_size):
     return list(ipaginate(iterable, page_size))
 
