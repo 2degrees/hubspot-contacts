@@ -36,6 +36,8 @@ BooleanProperty = Property.extend_type(
     false_label='No',
     )
 
+DateProperty = Property.extend_type('DateProperty')
+
 DatetimeProperty = Property.extend_type('DatetimeProperty')
 
 EnumerationProperty = Property.extend_type('EnumerationProperty', 'options')
@@ -47,6 +49,7 @@ StringProperty = Property.extend_type('StringProperty')
 
 PROPERTY_TYPE_BY_NAME = {
     'bool': BooleanProperty,
+    'date': DateProperty,
     'datetime': DatetimeProperty,
     'enumeration': EnumerationProperty,
     'number': NumberProperty,

@@ -24,6 +24,7 @@ so doing so would mean testing the tests.
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from datetime import date
 from datetime import datetime
 from json import dumps as json_serialize
 from math import ceil
@@ -186,7 +187,7 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         contacts_data = []
         for contact in contacts:
             contact_properties_data = \
-                self._get_contact_properties_data(contact.properties)
+                self._get_contact_properties_data(contact)
             contact_profiles_data = self._get_contact_profiles_data(contact)
             contact_data = {
                 'vid': contact.vid,
@@ -198,13 +199,19 @@ class GetAllContacts(_PaginatedObjectsRetriever):
 
         return contacts_data
 
-    def _get_contact_properties_data(self, contact_properties):
+    def _get_contact_properties_data(self, contact):
+        contact_properties = contact.properties
         contact_properties_data = {}
         for property_name in self._property_names:
-            if property_name not in contact_properties:
+            if property_name == 'email' and contact.email_address:
+                if 'email' in contact_properties:
+                    assert contact.email_address == contact_properties['email']
+                property_value = contact.email_address
+            elif property_name not in contact_properties:
                 continue
-            property_value = \
-                self._get_property_value(property_name, contact_properties)
+            else:
+                property_value = \
+                    self._get_property_value(property_name, contact_properties)
             contact_properties_data[property_name] = {
                 'value': property_value,
                 'versions': [],
@@ -216,7 +223,7 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         property_value = contact_properties[property_name]
         if isinstance(property_value, bool):
             property_value = json_serialize(property_value)
-        elif isinstance(property_value, datetime):
+        elif isinstance(property_value, date):
             property_value = \
                 convert_date_to_timestamp_in_milliseconds(property_value)
 
@@ -238,6 +245,53 @@ class GetAllContacts(_PaginatedObjectsRetriever):
             contact_profiles_data.append({'vid': vid, 'identities': []})
 
         return contact_profiles_data
+
+
+class UnsuccessfulGetAllContacts(GetAllContacts):
+
+    def __init__(
+        self,
+        contacts,
+        successful_api_call_count,
+        exception,
+        available_properties,
+        property_names=(),
+        ):
+
+        minimum_contact_count = \
+            BATCH_RETRIEVAL_SIZE_LIMIT * successful_api_call_count
+        are_no_contacts = minimum_contact_count == 0
+        assert are_no_contacts or minimum_contact_count < len(contacts), \
+            'Need at least {} contacts to satisfy successful API calls'.format(
+                minimum_contact_count,
+                )
+
+        super(UnsuccessfulGetAllContacts, self).__init__(
+            contacts,
+            available_properties,
+            property_names,
+            )
+        self._expection = exception
+        self._successful_api_call_count = successful_api_call_count
+
+    def __call__(self):
+        api_call_cutoff_index = self._successful_api_call_count + 1
+        get_all_contacts_api_calls = \
+            super(UnsuccessfulGetAllContacts, self).__call__()
+
+        successful_api_calls = \
+            get_all_contacts_api_calls[:api_call_cutoff_index]
+
+        failing_api_call = get_all_contacts_api_calls[api_call_cutoff_index]
+        unsuccessful_api_call = UnsuccessfulAPICall(
+            failing_api_call.url_path,
+            failing_api_call.http_method,
+            failing_api_call.query_string_args,
+            exception=self._expection,
+            )
+
+        api_calls = successful_api_calls + [unsuccessful_api_call]
+        return api_calls
 
 
 class GetAllContactsByLastUpdate(GetAllContacts):
@@ -572,6 +626,23 @@ def _format_response_data_for_property_group(property_group):
 def _format_response_data_for_properties(properties):
     properties_data = [format_data_for_property(p) for p in properties]
     return properties_data
+
+
+class DeletePropertyGroup(object):
+
+    def __init__(self, property_group_name):
+        super(DeletePropertyGroup, self).__init__()
+        self._property_group_name = property_group_name
+
+    def __call__(self):
+        url_path = \
+            CONTACTS_API_SCRIPT_NAME + '/groups/' + self._property_group_name
+        api_call = SuccessfulAPICall(
+            url_path,
+            'DELETE',
+            response_body_deserialization=None,
+            )
+        return [api_call]
 
 
 class GetAllContactLists(_PaginatedObjectsRetriever):

@@ -15,6 +15,7 @@
 ##############################################################################
 
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 from decimal import InvalidOperation
 from json import dumps as json_serialize
@@ -23,6 +24,7 @@ from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.generic_utils import \
     convert_date_to_timestamp_in_milliseconds
 from hubspot.contacts.properties import BooleanProperty
+from hubspot.contacts.properties import DateProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import NumberProperty
 
@@ -66,9 +68,12 @@ def _format_contact_properties_for_saving(
 
 
 def _serialize_property_value(property_value, property_type):
-    converter = _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
-    property_value_cast = converter(property_value)
-    property_value_serialized = unicode(property_value_cast)
+    if property_value is None:
+        property_value_serialized = ''
+    else:
+        converter = _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE[property_type]
+        property_value_cast = converter(property_value)
+        property_value_serialized = unicode(property_value_cast)
     return property_value_serialized
 
 
@@ -86,6 +91,13 @@ def _convert_to_number(value):
     return number
 
 
+def _convert_date_to_datestamp_in_milliseconds(date_or_datetime):
+    if isinstance(date_or_datetime, datetime):
+        date_or_datetime = date_or_datetime.date()
+
+    return convert_date_to_timestamp_in_milliseconds(date_or_datetime)
+
+
 _identity = lambda x: x
 
 
@@ -93,6 +105,7 @@ _PROPERTY_VALUE_CONVERTER_BY_PROPERTY_TYPE = defaultdict(
     lambda: _identity,
     {
         BooleanProperty: _json_serialize_to_boolean,
+        DateProperty: _convert_date_to_datestamp_in_milliseconds,
         DatetimeProperty: convert_date_to_timestamp_in_milliseconds,
         NumberProperty: _convert_to_number,
         },

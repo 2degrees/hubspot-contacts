@@ -31,6 +31,7 @@ from hubspot.contacts.testing import SaveContacts
 from tests._utils import make_contact
 from tests._utils import make_contacts
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
+from tests.test_properties import STUB_DATE_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
 from tests.test_properties import STUB_ENUMERATION_PROPERTY
 from tests.test_properties import STUB_NUMBER_PROPERTY
@@ -70,6 +71,12 @@ class TestSavingContacts(object):
             (STUB_BOOLEAN_PROPERTY, 'text', u'true'),
             (STUB_BOOLEAN_PROPERTY, '', u'false'),
             (
+                STUB_DATE_PROPERTY,
+                datetime(2014, 4, 4, 10, 28, 0, 140000),
+                u'1396569600000',
+                ),
+            (STUB_DATE_PROPERTY, date(2014, 4, 4), u'1396569600000'),
+            (
                 STUB_DATETIME_PROPERTY,
                 datetime(2014, 4, 4, 10, 28, 0, 140000),
                 u'1396607280140',
@@ -93,6 +100,24 @@ class TestSavingContacts(object):
                 expected_value,
                 )
 
+    def test_unsetting_properties(self):
+        properties = (
+            STUB_BOOLEAN_PROPERTY,
+            STUB_DATE_PROPERTY,
+            STUB_DATETIME_PROPERTY,
+            STUB_ENUMERATION_PROPERTY,
+            STUB_NUMBER_PROPERTY,
+            STUB_STRING_PROPERTY,
+            )
+
+        for property_definition in properties:
+            yield (
+                self._assert_property_value_cast_equals,
+                property_definition,
+                None,
+                '',
+                )
+
     def _assert_property_value_cast_equals(
         self,
         property_definition,
@@ -114,6 +139,7 @@ class TestSavingContacts(object):
 
     def test_invalid_property_values(self):
         test_cases_data = [
+            (STUB_DATE_PROPERTY, 1396603680140, '{} is not a date'),
             (STUB_DATETIME_PROPERTY, 1396603680140, '{} is not a date'),
             (STUB_NUMBER_PROPERTY, 'abc', '{} is not a number'),
             ]

@@ -24,6 +24,7 @@ from voluptuous import MultipleInvalid
 
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.properties import BooleanProperty
+from hubspot.contacts.properties import DateProperty
 from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.properties import EnumerationProperty
 from hubspot.contacts.properties import NumberProperty
@@ -54,6 +55,9 @@ STUB_BOOLEAN_PROPERTY = BooleanProperty.init_from_generalization(
     false_label='Nao',
     )
 
+STUB_DATE_PROPERTY = \
+    DateProperty.init_from_generalization(STUB_PROPERTY)
+
 STUB_DATETIME_PROPERTY = \
     DatetimeProperty.init_from_generalization(STUB_PROPERTY)
 
@@ -78,6 +82,9 @@ class TestGettingAllProperties(object):
 
     def test_boolean(self):
         self._check_properties_retrieval([STUB_BOOLEAN_PROPERTY])
+
+    def test_date(self):
+        self._check_properties_retrieval([STUB_DATE_PROPERTY])
 
     def test_datetime(self):
         self._check_properties_retrieval([STUB_DATETIME_PROPERTY])

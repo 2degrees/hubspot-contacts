@@ -17,14 +17,17 @@
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from inspect import isgenerator
 
 from hubspot.connection.exc import HubspotClientError
+from hubspot.connection.exc import HubspotServerError
 from hubspot.connection.testing import MockPortalConnection
 from nose.tools import assert_items_equal
+from nose.tools import assert_not_in
 from nose.tools import assert_raises
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
@@ -42,6 +45,7 @@ from hubspot.contacts.lists import get_all_contacts
 from hubspot.contacts.lists import get_all_contacts_by_last_update
 from hubspot.contacts.lists import get_all_contacts_from_list
 from hubspot.contacts.lists import remove_contacts_from_list
+from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.testing import AddContactsToList
 from hubspot.contacts.testing import CreateStaticContactList
 from hubspot.contacts.testing import DeleteContactList
@@ -51,10 +55,12 @@ from hubspot.contacts.testing import GetAllContactsByLastUpdate
 from hubspot.contacts.testing import GetContactsFromList
 from hubspot.contacts.testing import RemoveContactsFromList
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
+from hubspot.contacts.testing import UnsuccessfulGetAllContacts
 
 from tests._utils import make_contact
 from tests._utils import make_contacts
 from tests.test_properties import STUB_BOOLEAN_PROPERTY
+from tests.test_properties import STUB_DATE_PROPERTY
 from tests.test_properties import STUB_DATETIME_PROPERTY
 from tests.test_properties import STUB_ENUMERATION_PROPERTY
 from tests.test_properties import STUB_NUMBER_PROPERTY
@@ -67,6 +73,15 @@ _STUB_CONTACT_LIST = ContactList(1, 'atestlist', False)
 _STUB_CONTACT_1 = Contact(1, 'dude@bro.com', {}, [])
 
 _STUB_CONTACT_2 = Contact(2, 'bro@bro.com', {}, [])
+
+
+_EMAIL_PROPERTY = StringProperty(
+    'email',
+    'Email address',
+    'The email address',
+    'contactinformation',
+    'text',
+    )
 
 
 
@@ -441,6 +456,45 @@ class _BaseGettingContactsTestCase(object):
             property_names=[STUB_PROPERTY.name],
             )
 
+    def test_getting_email_address_as_property(self):
+        contact_with_email = make_contact(1)
+        contact_with_no_email = make_contact(2)
+        contact_with_no_email.email_address = None
+        simulator_contacts = [contact_with_email, contact_with_no_email]
+
+        expected_contacts = \
+            _get_contacts_with_email_property(simulator_contacts)
+
+        kwargs = self._get_kwargs_for_email_property()
+
+        connection = self._make_connection_for_contacts(
+            simulator_contacts,
+            available_property=_EMAIL_PROPERTY,
+            **self._get_kwargs_for_email_property()
+            )
+
+        with connection:
+            # Trigger API calls by consuming iterator
+            retrieved_contacts = list(self._RETRIEVER(connection, **kwargs))
+
+        eq_(list(expected_contacts), retrieved_contacts)
+
+    def test_conflicting_email_address_property(self):
+        contact = make_contact(1, {_EMAIL_PROPERTY.name: 'other@example.com'})
+        with assert_raises(AssertionError):
+            self._make_connection_for_contacts(
+                [contact],
+                available_property=_EMAIL_PROPERTY,
+                **self._get_kwargs_for_email_property()
+                )
+
+    @classmethod
+    def _get_kwargs_for_email_property(cls):
+        kwargs = {'property_names': [_EMAIL_PROPERTY.name]}
+        if cls._CONTACT_LIST:
+            kwargs['contact_list'] = cls._CONTACT_LIST
+        return kwargs
+
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
         contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT)
@@ -459,6 +513,7 @@ class _BaseGettingContactsTestCase(object):
     def test_property_type_casting(self):
         test_cases_data = [
             (STUB_BOOLEAN_PROPERTY, 'true', True),
+            (STUB_DATE_PROPERTY, u'1396569600000', date(2014, 4, 4)),
             (
                 STUB_DATETIME_PROPERTY,
                 u'1396607280140',
@@ -479,12 +534,26 @@ class _BaseGettingContactsTestCase(object):
 
             yield eq_, expected_value, retrieved_property_value
 
+    def test_unset_property_type_casting(self):
+        properties = (
+            STUB_BOOLEAN_PROPERTY,
+            STUB_DATE_PROPERTY,
+            STUB_DATETIME_PROPERTY,
+            STUB_ENUMERATION_PROPERTY,
+            STUB_NUMBER_PROPERTY,
+            STUB_STRING_PROPERTY,
+            )
+
+        for property_definition in properties:
+            yield self._assert_unset_property_absent, property_definition
+
     def test_simulator_type_casting(self):
         enumeration_property_value = \
             STUB_ENUMERATION_PROPERTY.options.values()[0]
 
         properties_and_values = (
             (STUB_BOOLEAN_PROPERTY, True),
+            (STUB_DATE_PROPERTY, date(2014, 1, 1)),
             (STUB_DATETIME_PROPERTY, datetime(2014, 1, 1, 7, 57)),
             (STUB_NUMBER_PROPERTY, 42),
             (STUB_STRING_PROPERTY, 'string'),
@@ -533,6 +602,13 @@ class _BaseGettingContactsTestCase(object):
 
         retrieved_contact = retrieved_contacts[0]
         return retrieved_contact
+
+    def _assert_unset_property_absent(self, property_definition):
+        retrieved_contact = self._retrieve_contact_with_specified_property(
+            property_definition,
+            '',
+            )
+        assert_not_in(property_definition.name, retrieved_contact.properties)
 
     def test_property_type_casting_for_unknown_property(self):
         simulator_contact = make_contact(1, {'p1': 'yes'})
@@ -595,6 +671,23 @@ def _get_contacts_with_stub_property(contacts):
     return contacts_with_stub_property
 
 
+def _get_contacts_with_email_property(simulator_contacts):
+    contacts_with_email_property = []
+    for contact in simulator_contacts:
+        contact_properties = {}
+        if contact.email_address:
+            contact_properties['email'] = contact.email_address
+        contact_with_email_property = Contact(
+            contact.vid,
+            contact.email_address,
+            contact_properties,
+            [],
+            )
+        contacts_with_email_property.append(contact_with_email_property)
+
+    return contacts_with_email_property
+
+
 class TestGettingAllContacts(_BaseGettingContactsTestCase):
 
     _RETRIEVER = staticmethod(get_all_contacts)
@@ -607,6 +700,61 @@ class TestGettingAllContacts(_BaseGettingContactsTestCase):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
         self._check_retrieved_contacts_match(contacts, contacts)
+
+
+class TestUnsuccessfulGettingAllContacts(object):
+
+    def test_no_successfully_retrieved_contacts(self):
+        connection = self._make_connection([], 0)
+        with connection:
+            with assert_raises(HubspotServerError):
+                list(get_all_contacts(connection))
+
+    def test_successful_first_page(self):
+        contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+
+        connection = self._make_connection(contacts, 1)
+        with connection:
+            retrieved_contacts = get_all_contacts(connection)
+
+            first_page_contacts = []
+            for contact_count, contact in enumerate(retrieved_contacts, 1):
+                first_page_contacts.append(contact)
+                if contact_count == BATCH_RETRIEVAL_SIZE_LIMIT:
+                    break
+
+            eq_(contacts[:BATCH_RETRIEVAL_SIZE_LIMIT], first_page_contacts)
+
+            with assert_raises(HubspotServerError):
+                next(retrieved_contacts)
+
+    def test_insuficient_successful_contacts(self):
+        # Below the boundary
+        with assert_raises(AssertionError):
+            self._make_simulator(
+                make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT - 1),
+                1,
+                )
+
+        # At the boundary
+        with assert_raises(AssertionError):
+            self._make_simulator(make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT), 1)
+
+    @classmethod
+    def _make_connection(cls, contacts, successful_api_call_count):
+        simulator = cls._make_simulator(contacts, successful_api_call_count)
+        connection = MockPortalConnection(simulator)
+        return connection
+
+    @staticmethod
+    def _make_simulator(contacts, successful_api_call_count):
+        simulator = UnsuccessfulGetAllContacts(
+            contacts,
+            successful_api_call_count,
+            HubspotServerError(':(', 500),
+            [STUB_STRING_PROPERTY],
+            )
+        return simulator
 
 
 class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
