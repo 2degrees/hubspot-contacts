@@ -743,6 +743,7 @@ class RemoveContactsFromList(_UpdateContactListMembership):
             updated_contacts,
             )
 
+
 class GetContactsFromList(GetAllContacts):
 
     _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/all'
