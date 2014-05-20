@@ -488,11 +488,11 @@ class _BaseCreateProperty(object):
 class CreateProperty(_BaseCreateProperty):
 
     def _get_api_call(self):
-        generalized_api_call = super(CreateProperty, self)._get_api_call()
+        super_ = super(CreateProperty, self)._get_api_call()
         api_call = SuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             response_body_deserialization=
-                generalized_api_call.request_body_deserialization,
+                super_.request_body_deserialization,
             )
         return api_call
 
@@ -504,10 +504,10 @@ class UnsuccessfulCreateProperty(_BaseCreateProperty):
         self._exception = exception
 
     def _get_api_call(self):
-        generalized_api_call = \
+        super_ = \
             super(UnsuccessfulCreateProperty, self)._get_api_call()
         api_call = UnsuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             exception=self._exception,
             )
         return api_call
@@ -582,12 +582,12 @@ class _BaseCreatePropertyGroup(object):
 class CreatePropertyGroup(_BaseCreatePropertyGroup):
 
     def _get_api_call(self):
-        generalized_api_call = super(CreatePropertyGroup, self)._get_api_call()
+        super_ = super(CreatePropertyGroup, self)._get_api_call()
 
         response_body_deserialization = \
             _format_response_data_for_property_group(self._property_group)
         api_call = SuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             response_body_deserialization=response_body_deserialization,
             )
         return api_call
@@ -601,10 +601,10 @@ class UnsuccessfulCreatePropertyGroup(_BaseCreatePropertyGroup):
         self._exception = exception
 
     def _get_api_call(self):
-        generalized_api_call = \
+        super_ = \
             super(UnsuccessfulCreatePropertyGroup, self)._get_api_call()
         api_call = UnsuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             exception=self._exception,
             )
         return api_call
@@ -705,14 +705,14 @@ class _BaseCreateStaticContactList(object):
 class CreateStaticContactList(_BaseCreateStaticContactList):
 
     def _get_api_call(self):
-        generalized_api_call = \
+        super_ = \
             super(CreateStaticContactList, self)._get_api_call()
 
         response_body_deserialization = \
-            dict(generalized_api_call.request_body_deserialization, listId=1)
+            dict(super_.request_body_deserialization, listId=1)
 
         api_call = SuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             response_body_deserialization=response_body_deserialization,
             )
         return api_call
@@ -726,11 +726,11 @@ class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
         self._exception = exception
 
     def _get_api_call(self):
-        generalized_api_call = \
+        super_ = \
             super(UnsuccessfulCreateStaticContactList, self)._get_api_call()
 
         api_call = UnsuccessfulAPICall.init_from_generalization(
-            generalized_api_call,
+            super_,
             exception=self._exception,
             )
         return api_call
