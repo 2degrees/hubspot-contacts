@@ -44,7 +44,7 @@ from hubspot.contacts.lists import get_all_contact_lists
 from hubspot.contacts.lists import get_all_contacts
 from hubspot.contacts.lists import get_all_contacts_by_last_update
 from hubspot.contacts.lists import get_all_contacts_from_list
-from hubspot.contacts.lists import get_all_contacts_from_list_by_last_update
+from hubspot.contacts.lists import get_all_contacts_from_list_by_added_date
 from hubspot.contacts.lists import remove_contacts_from_list
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.testing import AddContactsToList
@@ -53,7 +53,7 @@ from hubspot.contacts.testing import DeleteContactList
 from hubspot.contacts.testing import GetAllContactLists
 from hubspot.contacts.testing import GetAllContacts
 from hubspot.contacts.testing import GetAllContactsByLastUpdate
-from hubspot.contacts.testing import GetContactsByLastUpdateFromList
+from hubspot.contacts.testing import GetContactsFromListByAddedDate
 from hubspot.contacts.testing import GetContactsFromList
 from hubspot.contacts.testing import RemoveContactsFromList
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
@@ -850,11 +850,11 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
         self._check_retrieved_contacts_match(contacts, contacts)
 
 
-class TestGettingAllContactsByLastUpdateFromList(_BaseGettingContactsTestCase):
+class TestGettingAllContactsFromListByAddedDate(_BaseGettingContactsTestCase):
 
-    _RETRIEVER = staticmethod(get_all_contacts_from_list_by_last_update)
+    _RETRIEVER = staticmethod(get_all_contacts_from_list_by_added_date)
 
-    _SIMULATOR_CLASS = GetContactsByLastUpdateFromList
+    _SIMULATOR_CLASS = GetContactsFromListByAddedDate
 
     _CONTACT_LIST = _STUB_CONTACT_LIST
 

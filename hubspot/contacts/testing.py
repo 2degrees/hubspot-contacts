@@ -836,7 +836,7 @@ class GetContactsFromList(GetAllContacts):
         return self._API_CALL_PATH_INFO_TEMPLATE.format(self._contact_list.id)
 
 
-class GetContactsByLastUpdateFromList(GetAllContactsByLastUpdate):
+class GetContactsFromListByAddedDate(GetAllContactsByLastUpdate):
 
     _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/recent'
 
@@ -847,7 +847,7 @@ class GetContactsByLastUpdateFromList(GetAllContactsByLastUpdate):
         available_properties,
         property_names=(),
         ):
-        super_ = super(GetContactsByLastUpdateFromList, self)
+        super_ = super(GetContactsFromListByAddedDate, self)
         super_.__init__(contacts, available_properties, property_names)
 
         self._contact_list = contact_list

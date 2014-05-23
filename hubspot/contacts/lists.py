@@ -151,7 +151,7 @@ def get_all_contacts_by_last_update(
     property_names=(),
     cutoff_datetime=None,
     ):
-    return _get_contacts_from_all_pages_by_last_update(
+    return _get_contacts_from_all_pages_by_recency(
         'recently_updated',
         connection,
         property_names,
@@ -159,13 +159,13 @@ def get_all_contacts_by_last_update(
         )
 
 
-def get_all_contacts_from_list_by_last_update(
+def get_all_contacts_from_list_by_added_date(
     contact_list,
     connection,
     property_names=(),
     cutoff_datetime=None,
     ):
-    return _get_contacts_from_all_pages_by_last_update(
+    return _get_contacts_from_all_pages_by_recency(
         contact_list.id,
         connection,
         property_names,
@@ -173,7 +173,7 @@ def get_all_contacts_from_list_by_last_update(
         )
 
 
-def _get_contacts_from_all_pages_by_last_update(
+def _get_contacts_from_all_pages_by_recency(
     contact_list_id,
     connection,
     property_names=(),
