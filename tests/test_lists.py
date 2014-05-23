@@ -44,6 +44,7 @@ from hubspot.contacts.lists import get_all_contact_lists
 from hubspot.contacts.lists import get_all_contacts
 from hubspot.contacts.lists import get_all_contacts_by_last_update
 from hubspot.contacts.lists import get_all_contacts_from_list
+from hubspot.contacts.lists import get_all_contacts_from_list_by_last_update
 from hubspot.contacts.lists import remove_contacts_from_list
 from hubspot.contacts.properties import StringProperty
 from hubspot.contacts.testing import AddContactsToList
@@ -52,6 +53,7 @@ from hubspot.contacts.testing import DeleteContactList
 from hubspot.contacts.testing import GetAllContactLists
 from hubspot.contacts.testing import GetAllContacts
 from hubspot.contacts.testing import GetAllContactsByLastUpdate
+from hubspot.contacts.testing import GetContactsByLastUpdateFromList
 from hubspot.contacts.testing import GetContactsFromList
 from hubspot.contacts.testing import RemoveContactsFromList
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
@@ -475,8 +477,8 @@ class _BaseGettingContactsTestCase(object):
 
         with connection:
             # Trigger API calls by consuming iterator
-            retrieved_contacts = list(self._RETRIEVER(connection, **kwargs))
-
+            retrieved_contacts = \
+                list(self._RETRIEVER(connection=connection, **kwargs))
         eq_(list(expected_contacts), retrieved_contacts)
 
     def test_conflicting_email_address_property(self):
@@ -594,7 +596,7 @@ class _BaseGettingContactsTestCase(object):
             # Trigger API calls by consuming iterator
             retrieved_contacts = list(
                 self._RETRIEVER(
-                    connection,
+                    connection=connection,
                     property_names=property_names,
                     **kwargs
                     ),
@@ -636,7 +638,8 @@ class _BaseGettingContactsTestCase(object):
 
         with connection:
             # Trigger API calls by consuming iterator
-            retrieved_contacts = list(self._RETRIEVER(connection, **kwargs))
+            retrieved_contacts = \
+                list(self._RETRIEVER(connection=connection, **kwargs))
 
         eq_(list(expected_contacts), retrieved_contacts)
 
@@ -838,6 +841,20 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
     _RETRIEVER = staticmethod(get_all_contacts_from_list)
 
     _SIMULATOR_CLASS = GetContactsFromList
+
+    _CONTACT_LIST = _STUB_CONTACT_LIST
+
+    def test_exceeding_pagination_size(self):
+        contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
+        contacts = make_contacts(contacts_count)
+        self._check_retrieved_contacts_match(contacts, contacts)
+
+
+class TestGettingAllContactsByLastUpdateFromList(_BaseGettingContactsTestCase):
+
+    _RETRIEVER = staticmethod(get_all_contacts_from_list_by_last_update)
+
+    _SIMULATOR_CLASS = GetContactsByLastUpdateFromList
 
     _CONTACT_LIST = _STUB_CONTACT_LIST
 
