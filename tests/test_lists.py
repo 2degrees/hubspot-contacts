@@ -56,6 +56,7 @@ from hubspot.contacts.testing import GetAllContactsByLastUpdate
 from hubspot.contacts.testing import GetContactsFromListByAddedDate
 from hubspot.contacts.testing import GetContactsFromList
 from hubspot.contacts.testing import RemoveContactsFromList
+from hubspot.contacts.testing import STUB_LAST_MODIFIED_DATETIME
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
 from hubspot.contacts.testing import UnsuccessfulGetAllContacts
 
@@ -430,12 +431,12 @@ class _BaseGettingContactsTestCase(object):
     _CONTACT_LIST = abstractproperty()
 
     def test_no_contacts(self):
-        self._check_retrieved_contacts_match([], [])
+        self._check_contacts_from_simulated_retrieval_equal([], [])
 
     def test_not_exceeding_pagination_size(self):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT - 1
         contacts = make_contacts(contacts_count)
-        self._check_retrieved_contacts_match(contacts, contacts)
+        self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
     @abstractmethod
     def test_exceeding_pagination_size(self):
@@ -452,7 +453,7 @@ class _BaseGettingContactsTestCase(object):
 
         expected_contacts = _get_contacts_with_stub_property(simulator_contacts)
 
-        self._check_retrieved_contacts_match(
+        self._check_contacts_from_simulated_retrieval_equal(
             simulator_contacts,
             expected_contacts,
             property_names=[STUB_PROPERTY.name],
@@ -472,14 +473,15 @@ class _BaseGettingContactsTestCase(object):
         connection = self._make_connection_for_contacts(
             simulator_contacts,
             available_property=_EMAIL_PROPERTY,
-            **self._get_kwargs_for_email_property()
+            **kwargs
             )
 
         with connection:
             # Trigger API calls by consuming iterator
             retrieved_contacts = \
                 list(self._RETRIEVER(connection=connection, **kwargs))
-        eq_(list(expected_contacts), retrieved_contacts)
+
+        _assert_retrieved_contacts_equal(expected_contacts, retrieved_contacts)
 
     def test_conflicting_email_address_property(self):
         contact = make_contact(1, {_EMAIL_PROPERTY.name: 'other@example.com'})
@@ -500,7 +502,7 @@ class _BaseGettingContactsTestCase(object):
     def test_getting_non_existing_properties(self):
         """Requesting non-existing properties fails silently in HubSpot"""
         contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT)
-        self._check_retrieved_contacts_match(
+        self._check_contacts_from_simulated_retrieval_equal(
             contacts,
             contacts,
             property_names=['undefined'],
@@ -508,7 +510,7 @@ class _BaseGettingContactsTestCase(object):
 
     def test_contacts_with_related_contact_vids(self):
         contacts = [make_contact(1, related_contact_vids=[2, 3])]
-        self._check_retrieved_contacts_match(contacts, contacts)
+        self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
     #{ Property type casting
 
@@ -616,14 +618,14 @@ class _BaseGettingContactsTestCase(object):
         simulator_contact = make_contact(1, {'p1': 'yes'})
         expected_contact = simulator_contact.copy()
         expected_contact.properties = {}
-        self._check_retrieved_contacts_match(
+        self._check_contacts_from_simulated_retrieval_equal(
             [simulator_contact],
             [expected_contact],
             )
 
     #}
 
-    def _check_retrieved_contacts_match(
+    def _check_contacts_from_simulated_retrieval_equal(
         self,
         simulator_contacts,
         expected_contacts,
@@ -641,7 +643,7 @@ class _BaseGettingContactsTestCase(object):
             retrieved_contacts = \
                 list(self._RETRIEVER(connection=connection, **kwargs))
 
-        eq_(list(expected_contacts), retrieved_contacts)
+        _assert_retrieved_contacts_equal(expected_contacts, retrieved_contacts)
 
     @classmethod
     def _make_connection_for_contacts(
@@ -691,6 +693,24 @@ def _get_contacts_with_email_property(simulator_contacts):
     return contacts_with_email_property
 
 
+def _assert_retrieved_contacts_equal(expected_contacts, retrieved_contacts):
+    contacts_with_lastmodifieddate = \
+        _derive_contacts_with_lastmodifieddate(expected_contacts)
+    eq_(contacts_with_lastmodifieddate, retrieved_contacts)
+
+
+def _derive_contacts_with_lastmodifieddate(original_contacts):
+    contacts = []
+    for original_contact in original_contacts:
+        contact = original_contact.copy()
+        contact.properties = dict(
+            original_contact.properties,
+            lastmodifieddate=STUB_LAST_MODIFIED_DATETIME,
+            )
+        contacts.append(contact)
+    return contacts
+
+
 class TestGettingAllContacts(_BaseGettingContactsTestCase):
 
     _RETRIEVER = staticmethod(get_all_contacts)
@@ -702,7 +722,7 @@ class TestGettingAllContacts(_BaseGettingContactsTestCase):
     def test_exceeding_pagination_size(self):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
-        self._check_retrieved_contacts_match(contacts, contacts)
+        self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
 
 class TestUnsuccessfulGettingAllContacts(object):
@@ -726,7 +746,11 @@ class TestUnsuccessfulGettingAllContacts(object):
                 if contact_count == BATCH_RETRIEVAL_SIZE_LIMIT:
                     break
 
-            eq_(contacts[:BATCH_RETRIEVAL_SIZE_LIMIT], first_page_contacts)
+            expected_contacts = contacts[:BATCH_RETRIEVAL_SIZE_LIMIT]
+            _assert_retrieved_contacts_equal(
+                expected_contacts,
+                first_page_contacts,
+                )
 
             with assert_raises(HubspotServerError):
                 next(retrieved_contacts)
@@ -770,14 +794,14 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
 
     def test_exceeding_pagination_size(self):
         contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
-        self._check_retrieved_contacts_match(contacts, contacts)
+        self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
     def test_duplicated_contacts(self):
         contact1, contact2 = make_contacts(2)
         expected_contacts = [contact1, contact2]
         simulator_contacts = [contact1, contact2, contact1]
 
-        self._check_retrieved_contacts_match(
+        self._check_contacts_from_simulated_retrieval_equal(
             simulator_contacts,
             expected_contacts,
             )
@@ -829,7 +853,7 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
         contact_index = simulator_contacts.index(contact)
         expected_contacts = simulator_contacts[:contact_index]
 
-        self._check_retrieved_contacts_match(
+        self._check_contacts_from_simulated_retrieval_equal(
             simulator_contacts,
             expected_contacts,
             cutoff_datetime=cutoff_datetime,
@@ -847,10 +871,12 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
     def test_exceeding_pagination_size(self):
         contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
         contacts = make_contacts(contacts_count)
-        self._check_retrieved_contacts_match(contacts, contacts)
+        self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
 
-class TestGettingAllContactsFromListByAddedDate(TestGettingAllContactsByLastUpdate):
+class TestGettingAllContactsFromListByAddedDate(
+    TestGettingAllContactsByLastUpdate,
+    ):
 
     _RETRIEVER = staticmethod(get_all_contacts_from_list_by_added_date)
 

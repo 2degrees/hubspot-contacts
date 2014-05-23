@@ -42,12 +42,16 @@ from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_datetime
 from hubspot.contacts.generic_utils import get_uuid4_str
 from hubspot.contacts.generic_utils import paginate
+from hubspot.contacts.properties import DatetimeProperty
 from hubspot.contacts.request_data_formatters.contacts import \
     format_contacts_data_for_saving
 from hubspot.contacts.request_data_formatters.properties import \
     format_data_for_property
 from hubspot.contacts.request_data_formatters.property_groups import \
     format_data_for_property_group as format_request_data_for_property_group
+
+
+STUB_LAST_MODIFIED_DATETIME = datetime.now().replace(microsecond=0)
 
 
 class _PaginatedObjectsRetriever(object):
@@ -146,9 +150,21 @@ class GetAllContacts(_PaginatedObjectsRetriever):
 
     _OBJECT_DATA_KEY = 'contacts'
 
+    _LAST_MODIFIED_DATE_PROPERTY = DatetimeProperty(
+        'lastmodifieddate',
+        'label',
+        'description',
+        'group_name',
+        'text',
+        )
+
+    _STUB_LAST_MODIFIED_TIMESTAMP = \
+        convert_date_to_timestamp_in_milliseconds(STUB_LAST_MODIFIED_DATETIME)
+
     def __init__(self, contacts, available_properties, property_names=()):
         super(GetAllContacts, self).__init__(contacts)
 
+        available_properties += [self._LAST_MODIFIED_DATE_PROPERTY]
         self._available_properties_simulator = \
             GetAllProperties(available_properties)
         self._property_names = property_names
@@ -201,7 +217,17 @@ class GetAllContacts(_PaginatedObjectsRetriever):
 
     def _get_contact_properties_data(self, contact):
         contact_properties = contact.properties
-        contact_properties_data = {}
+
+        stub_last_modified_timestamp_string = \
+            str(self._STUB_LAST_MODIFIED_TIMESTAMP)
+        stub_lastmodifieddate_property_value_data = \
+            self._get_contact_property_value_data(
+                stub_last_modified_timestamp_string,
+                )
+        contact_properties_data = {
+            self._LAST_MODIFIED_DATE_PROPERTY.name:
+                stub_lastmodifieddate_property_value_data,
+            }
         for property_name in self._property_names:
             if property_name == 'email' and contact.email_address:
                 if 'email' in contact_properties:
@@ -212,11 +238,14 @@ class GetAllContacts(_PaginatedObjectsRetriever):
             else:
                 property_value = \
                     self._get_property_value(property_name, contact_properties)
-            contact_properties_data[property_name] = {
-                'value': property_value,
-                'versions': [],
-                }
+            contact_properties_data[property_name] = \
+                self._get_contact_property_value_data(property_value)
         return contact_properties_data
+
+    @staticmethod
+    def _get_contact_property_value_data(property_value):
+        property_value_data = {'value': property_value, 'versions': []}
+        return property_value_data
 
     @staticmethod
     def _get_property_value(property_name, contact_properties):
