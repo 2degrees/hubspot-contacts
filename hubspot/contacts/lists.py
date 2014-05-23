@@ -151,10 +151,37 @@ def get_all_contacts_by_last_update(
     property_names=(),
     cutoff_datetime=None,
     ):
+    return _get_contacts_from_all_pages_by_recency(
+        'recently_updated',
+        connection,
+        property_names,
+        cutoff_datetime,
+        )
 
+
+def get_all_contacts_from_list_by_added_date(
+    contact_list,
+    connection,
+    property_names=(),
+    cutoff_datetime=None,
+    ):
+    return _get_contacts_from_all_pages_by_recency(
+        contact_list.id,
+        connection,
+        property_names,
+        cutoff_datetime,
+        )
+
+
+def _get_contacts_from_all_pages_by_recency(
+    contact_list_id,
+    connection,
+    property_names=(),
+    cutoff_datetime=None,
+    ):
     contacts_data = _get_contacts_data(
         connection,
-        '/lists/recently_updated/contacts/recent',
+        '/lists/{}/contacts/recent'.format(contact_list_id),
         ('vid-offset', 'time-offset'),
         property_names,
         )
