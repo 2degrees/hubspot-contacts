@@ -850,15 +850,10 @@ class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):
         self._check_retrieved_contacts_match(contacts, contacts)
 
 
-class TestGettingAllContactsFromListByAddedDate(_BaseGettingContactsTestCase):
+class TestGettingAllContactsFromListByAddedDate(TestGettingAllContactsByLastUpdate):
 
     _RETRIEVER = staticmethod(get_all_contacts_from_list_by_added_date)
 
     _SIMULATOR_CLASS = GetContactsFromListByAddedDate
 
     _CONTACT_LIST = _STUB_CONTACT_LIST
-
-    def test_exceeding_pagination_size(self):
-        contacts_count = BATCH_RETRIEVAL_SIZE_LIMIT + 1
-        contacts = make_contacts(contacts_count)
-        self._check_retrieved_contacts_match(contacts, contacts)

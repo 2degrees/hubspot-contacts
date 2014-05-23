@@ -840,15 +840,8 @@ class GetContactsFromListByAddedDate(GetAllContactsByLastUpdate):
 
     _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/recent'
 
-    def __init__(
-        self,
-        contact_list,
-        contacts,
-        available_properties,
-        property_names=(),
-        ):
-        super_ = super(GetContactsFromListByAddedDate, self)
-        super_.__init__(contacts, available_properties, property_names)
+    def __init__(self, contact_list, *args, **kwargs):
+        super(GetContactsFromListByAddedDate, self).__init__(*args, **kwargs)
 
         self._contact_list = contact_list
 
