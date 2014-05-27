@@ -22,6 +22,7 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from inspect import isgenerator
+from itertools import islice
 
 from hubspot.connection.exc import HubspotClientError
 from hubspot.connection.exc import HubspotServerError
@@ -59,6 +60,7 @@ from hubspot.contacts.testing import RemoveContactsFromList
 from hubspot.contacts.testing import STUB_LAST_MODIFIED_DATETIME
 from hubspot.contacts.testing import UnsuccessfulCreateStaticContactList
 from hubspot.contacts.testing import UnsuccessfulGetAllContacts
+from hubspot.contacts.testing import UnsuccessfulGetAllContactsByLastUpdate
 
 from tests._utils import make_contact
 from tests._utils import make_contacts
@@ -725,63 +727,60 @@ class TestGettingAllContacts(_BaseGettingContactsTestCase):
         self._check_contacts_from_simulated_retrieval_equal(contacts, contacts)
 
 
-class TestUnsuccessfulGettingAllContacts(object):
+class _BaseTestUnsuccessfulGettingAllContacts(object):
+
+    __metaclass__ = ABCMeta
+
+    _RETRIEVER = abstractproperty()
+
+    _SIMULATOR_CLASS = abstractproperty()
 
     def test_no_successfully_retrieved_contacts(self):
-        connection = self._make_connection([], 0)
+        connection = self._make_connection([])
         with connection:
             with assert_raises(HubspotServerError):
-                list(get_all_contacts(connection))
+                list(self._RETRIEVER(connection))
 
-    def test_successful_first_page(self):
-        contacts = make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT + 1)
+    def test_some_successfully_retrieved_contacts(self):
+        contacts = make_contacts(1)
 
-        connection = self._make_connection(contacts, 1)
+        connection = self._make_connection(contacts)
         with connection:
-            retrieved_contacts = get_all_contacts(connection)
+            retrieved_contacts = self._RETRIEVER(connection)
 
-            first_page_contacts = []
-            for contact_count, contact in enumerate(retrieved_contacts, 1):
-                first_page_contacts.append(contact)
-                if contact_count == BATCH_RETRIEVAL_SIZE_LIMIT:
-                    break
-
-            expected_contacts = contacts[:BATCH_RETRIEVAL_SIZE_LIMIT]
+            successufully_retrieved_contacts = \
+                islice(retrieved_contacts, len(contacts))
             _assert_retrieved_contacts_equal(
-                expected_contacts,
-                first_page_contacts,
+                contacts,
+                list(successufully_retrieved_contacts),
                 )
 
             with assert_raises(HubspotServerError):
                 next(retrieved_contacts)
 
-    def test_insuficient_successful_contacts(self):
-        # Below the boundary
-        with assert_raises(AssertionError):
-            self._make_simulator(
-                make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT - 1),
-                1,
-                )
-
-        # At the boundary
-        with assert_raises(AssertionError):
-            self._make_simulator(make_contacts(BATCH_RETRIEVAL_SIZE_LIMIT), 1)
-
     @classmethod
-    def _make_connection(cls, contacts, successful_api_call_count):
-        simulator = cls._make_simulator(contacts, successful_api_call_count)
+    def _make_connection(cls, contacts):
+        simulator = cls._make_simulator(contacts)
         connection = MockPortalConnection(simulator)
         return connection
 
-    @staticmethod
-    def _make_simulator(contacts, successful_api_call_count):
-        simulator = UnsuccessfulGetAllContacts(
+    @classmethod
+    def _make_simulator(cls, contacts):
+        simulator = cls._SIMULATOR_CLASS(
             contacts,
-            successful_api_call_count,
-            HubspotServerError(':(', 500),
+            HubspotServerError('Internal server error', 500),
             [STUB_STRING_PROPERTY],
             )
         return simulator
+
+
+class TestUnsuccessfulGettingAllContacts(
+    _BaseTestUnsuccessfulGettingAllContacts,
+    ):
+
+    _RETRIEVER = staticmethod(get_all_contacts)
+
+    _SIMULATOR_CLASS = UnsuccessfulGetAllContacts
 
 
 class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
@@ -858,6 +857,15 @@ class TestGettingAllContactsByLastUpdate(_BaseGettingContactsTestCase):
             expected_contacts,
             cutoff_datetime=cutoff_datetime,
             )
+
+
+class TestUnsuccessfulGettingAllContactsByLastUpdate(
+    _BaseTestUnsuccessfulGettingAllContacts,
+    ):
+
+    _RETRIEVER = staticmethod(get_all_contacts_by_last_update)
+
+    _SIMULATOR_CLASS = UnsuccessfulGetAllContactsByLastUpdate
 
 
 class TestGettingAllContactsFromList(_BaseGettingContactsTestCase):

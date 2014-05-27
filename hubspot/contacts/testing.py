@@ -26,6 +26,7 @@ from abc import abstractmethod
 from abc import abstractproperty
 from datetime import date
 from datetime import datetime
+from functools import partial
 from json import dumps as json_serialize
 from math import ceil
 
@@ -276,51 +277,70 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         return contact_profiles_data
 
 
-class UnsuccessfulGetAllContacts(GetAllContacts):
+class _UnsucessfulContactRetrievalSimulator(object):
 
     def __init__(
         self,
+        successful_simulator_class,
         contacts,
-        successful_api_call_count,
         exception,
-        available_properties,
-        property_names=(),
+        *args,
+        **kwargs
         ):
+        super(_UnsucessfulContactRetrievalSimulator, self).__init__()
 
-        minimum_contact_count = \
-            BATCH_RETRIEVAL_SIZE_LIMIT * successful_api_call_count
-        are_no_contacts = minimum_contact_count == 0
-        assert are_no_contacts or minimum_contact_count < len(contacts), \
-            'Need at least {} contacts to satisfy successful API calls'.format(
-                minimum_contact_count,
-                )
-
-        super(UnsuccessfulGetAllContacts, self).__init__(
+        self._successful_api_call_simulator = successful_simulator_class(
             contacts,
-            available_properties,
-            property_names,
+            *args,
+            **kwargs
             )
-        self._expection = exception
-        self._successful_api_call_count = successful_api_call_count
+
+        self._exception = exception
 
     def __call__(self):
-        api_call_cutoff_index = self._successful_api_call_count + 1
-        get_all_contacts_api_calls = \
-            super(UnsuccessfulGetAllContacts, self).__call__()
+        successful_api_call_simulator = self._successful_api_call_simulator
 
-        successful_api_calls = \
-            get_all_contacts_api_calls[:api_call_cutoff_index]
+        api_calls = successful_api_call_simulator()
 
-        failing_api_call = get_all_contacts_api_calls[api_call_cutoff_index]
-        unsuccessful_api_call = UnsuccessfulAPICall(
-            failing_api_call.url_path,
-            failing_api_call.http_method,
-            failing_api_call.query_string_args,
-            exception=self._expection,
-            )
+        contacts_by_page = successful_api_call_simulator._objects_by_page
+        if contacts_by_page:
+            last_api_call = api_calls[-1]
+            last_api_call.response_body_deserialization['has-more'] = True
 
-        api_calls = successful_api_calls + [unsuccessful_api_call]
+            page_count = len(contacts_by_page)
+            unsuccessful_api_call_number = page_count + 1
+            unsuccessful_api_call_query_string_args = \
+                last_api_call.query_string_args.copy()
+            unsuccessful_api_call_pagination_query_string_args = \
+                successful_api_call_simulator._get_query_string_args_for_page(
+                    unsuccessful_api_call_number,
+                    )
+            unsuccessful_api_call_query_string_args.update(
+                unsuccessful_api_call_pagination_query_string_args,
+                )
+
+            unsuccessful_api_call = UnsuccessfulAPICall(
+                last_api_call.url_path,
+                last_api_call.http_method,
+                unsuccessful_api_call_query_string_args,
+                exception=self._exception,
+                )
+        else:
+            last_api_call = api_calls.pop()
+            unsuccessful_api_call = UnsuccessfulAPICall(
+                last_api_call.url_path,
+                last_api_call.http_method,
+                last_api_call.query_string_args,
+                exception=self._exception,
+                )
+
+        api_calls.append(unsuccessful_api_call)
+
         return api_calls
+
+
+UnsuccessfulGetAllContacts = \
+    partial(_UnsucessfulContactRetrievalSimulator, GetAllContacts)
 
 
 class GetAllContactsByLastUpdate(GetAllContacts):
@@ -436,6 +456,10 @@ class GetAllContactsByLastUpdate(GetAllContacts):
         contact_added_at_timestamp = \
             convert_date_to_timestamp_in_milliseconds(contact_added_at_datetime)
         return contact_added_at_timestamp
+
+
+UnsuccessfulGetAllContactsByLastUpdate = \
+    partial(_UnsucessfulContactRetrievalSimulator, GetAllContactsByLastUpdate)
 
 
 class SaveContacts(object):
