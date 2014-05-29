@@ -56,7 +56,7 @@ def _get_raw_property_options(property_):
             ]
     elif isinstance(property_, EnumerationProperty):
         raw_options_data = []
-        for option_label, option_value in property_.options.items():
+        for option_value, option_label in property_.options.items():
             option_data = {
                 'label': option_label,
                 'value': option_value,
