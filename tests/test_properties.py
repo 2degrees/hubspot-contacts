@@ -63,7 +63,7 @@ STUB_DATETIME_PROPERTY = \
 
 STUB_ENUMERATION_PROPERTY = EnumerationProperty.init_from_generalization(
     STUB_PROPERTY,
-    options={'label1': 'value1', 'label2': '123'},
+    options={'value1': 'label1', '123': 'label2'},
     )
 
 STUB_NUMBER_PROPERTY = NumberProperty.init_from_generalization(STUB_PROPERTY)

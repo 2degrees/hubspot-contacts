@@ -132,7 +132,7 @@ def _build_enumeration_options_from_data(enumeration_options_data):
     for option_data in enumeration_options_data:
         option_label = option_data['label']
         option_value = option_data['value']
-        enumeration_options[option_label] = option_value
+        enumeration_options[option_value] = option_label
     return enumeration_options
 
 

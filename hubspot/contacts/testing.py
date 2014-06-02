@@ -496,6 +496,31 @@ class SaveContacts(object):
         return api_calls
 
 
+class UnsuccessfulSaveContacts(SaveContacts):
+
+    def __init__(self, contacts, exception, available_properties):
+        super(UnsuccessfulSaveContacts, self).__init__(
+            contacts,
+            available_properties,
+            )
+        self._exception = exception
+
+    def __call__(self):
+        api_calls = super(UnsuccessfulSaveContacts, self).__call__()
+        if api_calls:
+            last_api_call = api_calls.pop()
+            unsuccessful_api_call = UnsuccessfulAPICall(
+                last_api_call.url_path,
+                last_api_call.http_method,
+                last_api_call.query_string_args,
+                last_api_call.request_body_deserialization,
+                exception=self._exception,
+                )
+            api_calls.append(unsuccessful_api_call)
+
+        return api_calls
+
+
 class GetAllProperties(object):
 
     def __init__(self, properties):

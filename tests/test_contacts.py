@@ -19,14 +19,17 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
+from hubspot.connection.exc import HubspotServerError
+from hubspot.connection.testing import MockPortalConnection
+from nose.tools import assert_raises
 from nose.tools import assert_raises_regexp
 from nose.tools import eq_
-from hubspot.connection.testing import MockPortalConnection
 
 from hubspot.contacts import save_contacts
 from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.exc import HubspotPropertyValueError
 from hubspot.contacts.testing import SaveContacts
+from hubspot.contacts.testing import UnsuccessfulSaveContacts
 
 from tests._utils import make_contact
 from tests._utils import make_contacts
@@ -179,5 +182,33 @@ class TestSavingContacts(object):
     def _make_connection_for_contacts(contacts, available_property=None):
         available_property = available_property or STUB_STRING_PROPERTY
         simulator = SaveContacts(contacts, [available_property])
+        connection = MockPortalConnection(simulator)
+        return connection
+
+
+class TestUnsuccessfullySavingContacts(object):
+
+    _STUB_EXCEPTION = HubspotServerError('Internal server error', 500)
+
+    def test_no_contacts(self):
+        contacts = []
+        with self._make_connection_for_contacts(contacts) as connection:
+            save_contacts(contacts, connection)
+
+    def test_some_contacts(self):
+        saved_contacts = make_contacts(1)
+        with self._make_connection_for_contacts(saved_contacts) as connection:
+            with assert_raises(HubspotServerError) as context_manager:
+                save_contacts(saved_contacts, connection)
+
+        eq_(self._STUB_EXCEPTION, context_manager.exception)
+
+    @classmethod
+    def _make_connection_for_contacts(cls, contacts):
+        simulator = UnsuccessfulSaveContacts(
+            contacts,
+            cls._STUB_EXCEPTION,
+            [STUB_STRING_PROPERTY],
+            )
         connection = MockPortalConnection(simulator)
         return connection
