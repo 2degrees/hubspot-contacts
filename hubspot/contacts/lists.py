@@ -21,6 +21,7 @@ from json import loads as json_deserialize
 from pyrecord import Record
 
 from hubspot.contacts import Contact
+from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 from hubspot.contacts._data_retrieval import PaginatedDataRetriever
 from hubspot.contacts._property_utils import get_property_type_by_property_name
@@ -34,6 +35,7 @@ from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_date
 from hubspot.contacts.generic_utils import \
     convert_timestamp_in_milliseconds_to_datetime
+from hubspot.contacts.generic_utils import ipaginate
 from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import DateProperty
 from hubspot.contacts.properties import DatetimeProperty
@@ -123,17 +125,19 @@ def remove_contacts_from_list(contact_list, contacts, connection):
 
 
 def _update_contact_list_membership(endpoint_url_path, contacts, connection):
-    if not contacts:
-        return []
+    updated_contact_vids = []
 
-    contact_vids = [c.vid for c in contacts]
-    response_data = connection.send_post_request(
-        endpoint_url_path,
-        {'vids': contact_vids},
-        )
-    response_data = CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA(response_data)
+    contacts_batches = ipaginate(contacts, BATCH_SAVING_SIZE_LIMIT)
+    for contacts_batch in contacts_batches:
+        contact_vids = [c.vid for c in contacts_batch]
+        response_data = connection.send_post_request(
+            endpoint_url_path,
+            {'vids': contact_vids},
+            )
+        response_data = CONTACT_LIST_MEMBERSHIP_UPDATE_SCHEMA(response_data)
 
-    updated_contact_vids = response_data['updated']
+        updated_contact_vids.extend(response_data['updated'])
+
     return updated_contact_vids
 
 

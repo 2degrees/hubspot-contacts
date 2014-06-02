@@ -37,6 +37,7 @@ from voluptuous import Invalid
 
 from hubspot.contacts import Contact
 from hubspot.contacts._constants import BATCH_RETRIEVAL_SIZE_LIMIT
+from hubspot.contacts._constants import BATCH_SAVING_SIZE_LIMIT
 from hubspot.contacts.lists import ContactList
 from hubspot.contacts.lists import add_contacts_to_list
 from hubspot.contacts.lists import create_static_contact_list
@@ -75,10 +76,6 @@ from tests.test_properties import STUB_STRING_PROPERTY
 
 _STUB_CONTACT_LIST = ContactList(1, 'atestlist', False)
 
-_STUB_CONTACT_1 = Contact(1, 'dude@bro.com', {}, [])
-
-_STUB_CONTACT_2 = Contact(2, 'bro@bro.com', {}, [])
-
 
 _EMAIL_PROPERTY = StringProperty(
     'email',
@@ -87,7 +84,6 @@ _EMAIL_PROPERTY = StringProperty(
     'contactinformation',
     'text',
     )
-
 
 
 class TestContactListsRetrieval(object):
@@ -224,78 +220,93 @@ class TestContactListDeletion(object):
                 delete_contact_list(invalid_contact_list_id, connection)
 
 
-class TestAddingContactsToList(object):
+class _BaseContactListMembershipUpdateTestCase(object):
 
-    def test_no_contacts_to_add(self):
-        simulator = AddContactsToList(_STUB_CONTACT_LIST, [], [])
+    __metaclass__ = ABCMeta
 
-        with MockPortalConnection(simulator) as connection:
-            added_contacts_vids = \
-                add_contacts_to_list(_STUB_CONTACT_LIST, [], connection)
+    _SIMULATOR_CLASS = abstractproperty()
 
-        eq_([], added_contacts_vids)
+    def test_no_contacts(self):
+        contacts_in_list = make_contacts(5)
+        self._test_membership_update([], [], contacts_in_list)
 
-    def test_contacts_not_in_list(self):
-        self._test_contacts_addition(
-            expected_updated_contacts=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_list=[],
-            )
+    @abstractmethod
+    def test_contacts_not_in_list_without_exceeding_batch_size_limit(self):
+        pass
 
-    def test_contacts_already_in_list(self):
-        self._test_contacts_addition(
-            expected_updated_contacts=[],
-            contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_list=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            )
+    @abstractmethod
+    def test_contacts_not_in_list_exceeding_batch_size_limit(self):
+        pass
 
-    def test_some_contacts_already_in_list(self):
-        self._test_contacts_addition(
-            expected_updated_contacts=[_STUB_CONTACT_2],
-            contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_list=[_STUB_CONTACT_1],
-            )
+    @abstractmethod
+    def test_all_contacts_in_list_without_exceeding_batch_size_limit(self):
+        pass
+
+    @abstractmethod
+    def test_all_contacts_in_list_exceeding_batch_size_limit(self):
+        pass
+
+    @abstractmethod
+    def test_updated_contacts_in_first_batch_of_list(self):
+        pass
+
+    @abstractmethod
+    def test_updated_contacts_in_subsequent_batch_of_list(self):
+        pass
 
     def test_non_existing_contact(self):
-        self._test_contacts_addition(
+        self._test_membership_update(
             expected_updated_contacts=[],
-            contacts_to_add=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+            contacts_to_update=make_contacts(1),
             contacts_in_hubspot=[],
             )
 
     def test_unexpected_response(self):
-        connection = MockPortalConnection(
-            _make_unsupported_api_call_from_simulator(AddContactsToList),
-            )
+        connection = MockPortalConnection(self._make_unsupported_api_call())
+        with connection, assert_raises(Invalid):
+            self._MEMBERSHIP_UPDATER(
+                _STUB_CONTACT_LIST,
+                make_contacts(1),
+                connection,
+                )
 
-        with assert_raises(Invalid):
-            with connection:
-                add_contacts_to_list(
-                    _STUB_CONTACT_LIST,
-                    [_STUB_CONTACT_1, _STUB_CONTACT_2],
-                    connection,
-                    )
+    def test_contacts_as_a_generator(self):
+        contacts = make_contacts(1)
 
-    def _test_contacts_addition(
+        with self._make_connection(contacts, contacts) as connection:
+            updated_contact_vids = self._MEMBERSHIP_UPDATER(
+                _STUB_CONTACT_LIST,
+                iter(contacts),
+                connection,
+                )
+
+        expected_updated_contact_vids = _get_contact_vids(contacts)
+        assert_items_equal(expected_updated_contact_vids, updated_contact_vids)
+
+    def _test_membership_update(
         self,
         expected_updated_contacts,
-        contacts_to_add,
+        contacts_to_update,
         contacts_in_list=None,
         contacts_in_hubspot=None,
         ):
         if contacts_in_list is None:
             contacts_in_list = []
+
         if contacts_in_hubspot is None:
-            contacts_in_hubspot = [_STUB_CONTACT_1, _STUB_CONTACT_2]
+            contacts_in_hubspot = \
+                set(contacts_to_update) | set(contacts_in_list)
 
-        contacts_not_in_list = set(contacts_to_add) - set(contacts_in_list)
-        updated_contacts = set(contacts_in_hubspot) & contacts_not_in_list
-
-        connection = self._make_connection(contacts_to_add, updated_contacts)
+        updated_contacts = self._calculate_updated_contacts(
+            contacts_to_update,
+            contacts_in_list,
+            contacts_in_hubspot,
+            )
+        connection = self._make_connection(contacts_to_update, updated_contacts)
         with connection:
-            added_contact_vids = add_contacts_to_list(
+            added_contact_vids = self._MEMBERSHIP_UPDATER(
                 _STUB_CONTACT_LIST,
-                contacts_to_add,
+                contacts_to_update,
                 connection,
                 )
 
@@ -303,123 +314,190 @@ class TestAddingContactsToList(object):
             _get_contact_vids(expected_updated_contacts)
         assert_items_equal(expected_updated_contact_vids, added_contact_vids)
 
-    def _make_connection(self, contacts_to_add, updated_contacts=None):
-        updated_contacts = updated_contacts or []
-        simulator = AddContactsToList(
+    @abstractmethod
+    def _calculate_updated_contacts(
+        self,
+        contacts_to_update,
+        contacts_in_list,
+        contacts_in_hubspot,
+        ):
+        pass
+
+    def _make_connection(self, contacts_to_update, updated_contacts):
+        simulator = self._SIMULATOR_CLASS(
             _STUB_CONTACT_LIST,
-            contacts_to_add,
+            contacts_to_update,
             updated_contacts,
             )
         connection = MockPortalConnection(simulator)
         return connection
 
+    @classmethod
+    def _make_unsupported_api_call(cls):
+        api_calls_simulator = cls._SIMULATOR_CLASS(
+            _STUB_CONTACT_LIST,
+            make_contacts(1),
+            [],
+            )
 
-class TestRemovingContactsFromList(object):
+        api_calls = api_calls_simulator()
+        for api_call in api_calls:
+            # Corrupt the response
+            del api_call.response_body_deserialization['updated']
 
-    def test_no_contacts_to_remove(self):
-        simulator = RemoveContactsFromList(_STUB_CONTACT_LIST, [], [])
-
-        with MockPortalConnection(simulator) as connection:
-            removed_contacts_vids = \
-                remove_contacts_from_list(_STUB_CONTACT_LIST, [], connection)
-
-        eq_([], removed_contacts_vids)
+        return lambda: api_calls
 
 
-    def test_contacts_not_in_list(self):
-        self._test_contacts_removal(
-            expected_updated_contacts=[],
-            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+class TestAddingContactsToList(_BaseContactListMembershipUpdateTestCase):
+
+    _MEMBERSHIP_UPDATER = staticmethod(add_contacts_to_list)
+
+    _SIMULATOR_CLASS = AddContactsToList
+
+    def test_contacts_not_in_list_without_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT)
+        self._test_membership_update(
+            expected_updated_contacts=contacts,
+            contacts_to_update=contacts,
             contacts_in_list=[],
             )
 
-    def test_contacts_in_list(self):
-        self._test_contacts_removal(
-            expected_updated_contacts=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_list=[_STUB_CONTACT_1, _STUB_CONTACT_2],
+    def test_contacts_not_in_list_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+        self._test_membership_update(
+            expected_updated_contacts=contacts,
+            contacts_to_update=contacts,
+            contacts_in_list=[],
             )
 
-    def test_some_contacts_in_list(self):
-        self._test_contacts_removal(
-            expected_updated_contacts=[_STUB_CONTACT_1],
-            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_list=[_STUB_CONTACT_1],
-            )
-
-    def test_non_existing_contact(self):
-        self._test_contacts_removal(
+    def test_all_contacts_in_list_without_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT)
+        self._test_membership_update(
             expected_updated_contacts=[],
-            contacts_to_remove=[_STUB_CONTACT_1, _STUB_CONTACT_2],
-            contacts_in_hubspot=[],
+            contacts_to_update=contacts,
+            contacts_in_list=contacts,
             )
 
-    def test_unexpected_response(self):
-        connection = MockPortalConnection(
-            _make_unsupported_api_call_from_simulator(RemoveContactsFromList)
+    def test_all_contacts_in_list_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+        self._test_membership_update(
+            expected_updated_contacts=[],
+            contacts_to_update=contacts,
+            contacts_in_list=contacts,
             )
 
-        with assert_raises(Invalid):
-            remove_contacts_from_list(
-                _STUB_CONTACT_LIST,
-                [_STUB_CONTACT_1, _STUB_CONTACT_2],
-                connection,
-                )
+    def test_updated_contacts_in_first_batch_of_list(self):
+        contacts_to_update = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
 
-    def _test_contacts_removal(
+        contacts_in_first_batch, other_contacts = \
+            _split_list(contacts_to_update, 1)
+
+        self._test_membership_update(
+            expected_updated_contacts=contacts_in_first_batch,
+            contacts_to_update=contacts_to_update,
+            contacts_in_list=other_contacts,
+            )
+
+    def test_updated_contacts_in_subsequent_batch_of_list(self):
+        contacts_to_update = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+
+        contacts_in_first_batch, other_contacts = \
+            _split_list(contacts_to_update, BATCH_SAVING_SIZE_LIMIT)
+
+        self._test_membership_update(
+            expected_updated_contacts=contacts_in_first_batch,
+            contacts_to_update=contacts_to_update,
+            contacts_in_list=other_contacts,
+            )
+
+    def _calculate_updated_contacts(
         self,
-        expected_updated_contacts,
-        contacts_to_remove,
-        contacts_in_list=None,
-        contacts_in_hubspot=None,
+        contacts_to_update,
+        contacts_in_list,
+        contacts_in_hubspot,
         ):
-        if contacts_in_list is None:
-            contacts_in_list = []
-        if contacts_in_hubspot is None:
-            contacts_in_hubspot = [_STUB_CONTACT_1, _STUB_CONTACT_2]
+        contacts_not_in_list = set(contacts_to_update) - set(contacts_in_list)
+        updated_contacts = set(contacts_in_hubspot) & contacts_not_in_list
+        return updated_contacts
 
-        updated_contacts = set(contacts_in_hubspot) & set(contacts_in_list)
-        connection = self._make_connection(contacts_to_remove, updated_contacts)
-        with connection:
-            removed_contact_vids = remove_contacts_from_list(
-                _STUB_CONTACT_LIST,
-                contacts_to_remove,
-                connection,
-                )
 
-        expected_updated_contact_vids = \
-            _get_contact_vids(expected_updated_contacts)
-        assert_items_equal(expected_updated_contact_vids, removed_contact_vids)
+class TestRemovingContactsFromList(_BaseContactListMembershipUpdateTestCase):
 
-    def _make_connection(self, contacts_to_remove, updated_contacts=None):
-        updated_contacts = updated_contacts or []
-        simulator = RemoveContactsFromList(
-            _STUB_CONTACT_LIST,
-            contacts_to_remove,
-            updated_contacts,
+    _MEMBERSHIP_UPDATER = staticmethod(remove_contacts_from_list)
+
+    _SIMULATOR_CLASS = RemoveContactsFromList
+
+    def test_contacts_not_in_list_without_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT)
+        self._test_membership_update(
+            expected_updated_contacts=[],
+            contacts_to_update=contacts,
+            contacts_in_list=[],
             )
-        connection = MockPortalConnection(simulator)
-        return connection
 
+    def test_contacts_not_in_list_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+        self._test_membership_update(
+            expected_updated_contacts=[],
+            contacts_to_update=contacts,
+            contacts_in_list=[],
+            )
 
-def _make_unsupported_api_call_from_simulator(simulator_class):
-    api_calls_simulator = simulator_class(
-        _STUB_CONTACT_LIST,
-        [_STUB_CONTACT_1, _STUB_CONTACT_2],
-        [],
-        )
+    def test_all_contacts_in_list_without_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT)
+        self._test_membership_update(
+            expected_updated_contacts=contacts,
+            contacts_to_update=contacts,
+            contacts_in_list=contacts,
+            )
 
-    api_calls = api_calls_simulator()
-    for api_call in api_calls:
-        response_body_deserialization = api_call.response_body_deserialization
-        response_body_deserialization['update'] = \
-            response_body_deserialization.pop('updated')
+    def test_all_contacts_in_list_exceeding_batch_size_limit(self):
+        contacts = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+        self._test_membership_update(
+            expected_updated_contacts=contacts,
+            contacts_to_update=contacts,
+            contacts_in_list=contacts,
+            )
 
-    return lambda: api_calls
+    def test_updated_contacts_in_first_batch_of_list(self):
+        contacts_to_update = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+
+        contacts_in_first_batch = contacts_to_update[BATCH_SAVING_SIZE_LIMIT:]
+
+        self._test_membership_update(
+            expected_updated_contacts=contacts_in_first_batch,
+            contacts_to_update=contacts_to_update,
+            contacts_in_list=contacts_in_first_batch,
+            )
+
+    def test_updated_contacts_in_subsequent_batch_of_list(self):
+        contacts_to_update = make_contacts(BATCH_SAVING_SIZE_LIMIT + 1)
+
+        contacts_in_subsequent_batch = \
+            contacts_to_update[:BATCH_SAVING_SIZE_LIMIT]
+
+        self._test_membership_update(
+            expected_updated_contacts=contacts_in_subsequent_batch,
+            contacts_to_update=contacts_to_update,
+            contacts_in_list=contacts_in_subsequent_batch,
+            )
+
+    def _calculate_updated_contacts(
+        self,
+        contacts_to_update,
+        contacts_in_list,
+        contacts_in_hubspot,
+        ):
+        updated_contacts = set(contacts_in_hubspot) & set(contacts_in_list)
+        return updated_contacts
 
 
 def _get_contact_vids(contacts):
     return [c.vid for c in contacts]
+
+
+def _split_list(list_, index):
+    return list_[:index], list_[index:]
 
 
 class _BaseGettingContactsTestCase(object):

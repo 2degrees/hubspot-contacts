@@ -817,27 +817,35 @@ class _UpdateContactListMembership(object):
     def __init__(self, contact_list, contacts_to_update, updated_contacts):
         super(_UpdateContactListMembership, self).__init__()
         self._contact_list = contact_list
-        self._contacts_to_update_vids = \
-            self._get_contact_vids(contacts_to_update)
-        self._updated_contacts_vids = self._get_contact_vids(updated_contacts)
+
+        self._contacts_by_page = \
+            paginate(contacts_to_update, BATCH_SAVING_SIZE_LIMIT)
+        self._updated_contacts = updated_contacts
 
     def __call__(self):
-        if not self._contacts_to_update_vids:
-            return []
+        api_calls = []
 
-        request_body_deserialization = {'vids': self._contacts_to_update_vids}
-        response_body_deserialization = {'updated': self._updated_contacts_vids}
-        path_info = '/lists/{}/{}'.format(
-            self._contact_list.id,
-            self.url_path_list_action,
-            )
-        api_call = SuccessfulAPICall(
-            CONTACTS_API_SCRIPT_NAME + path_info,
-            'POST',
-            request_body_deserialization=request_body_deserialization,
-            response_body_deserialization=response_body_deserialization,
-            )
-        return [api_call]
+        for contacts_page in self._contacts_by_page:
+            request_body_deserialization = \
+                {'vids': self._get_contact_vids(contacts_page)}
+
+            updated_contacts_in_page = \
+                [c for c in self._updated_contacts if c in contacts_page]
+            response_body_deserialization = \
+                {'updated': self._get_contact_vids(updated_contacts_in_page)}
+            path_info = '/lists/{}/{}'.format(
+                self._contact_list.id,
+                self.url_path_list_action,
+                )
+            api_call = SuccessfulAPICall(
+                CONTACTS_API_SCRIPT_NAME + path_info,
+                'POST',
+                request_body_deserialization=request_body_deserialization,
+                response_body_deserialization=response_body_deserialization,
+                )
+            api_calls.append(api_call)
+
+        return api_calls
 
     @staticmethod
     def _get_contact_vids(contacts):
