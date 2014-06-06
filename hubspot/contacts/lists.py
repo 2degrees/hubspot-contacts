@@ -81,10 +81,9 @@ def get_all_contact_lists(connection):
     return contact_lists
 
 
-def delete_contact_list(contacts_list_id, connection):
-    contacts_list_id = int(contacts_list_id)
+def delete_contact_list(contact_list_id, connection):
     url_path = \
-        '{}/{}'.format(_CONTACT_LIST_COLLECTION_URL_PATH, contacts_list_id)
+        '{}/{}'.format(_CONTACT_LIST_COLLECTION_URL_PATH, contact_list_id)
     connection.send_delete_request(url_path)
 
 
