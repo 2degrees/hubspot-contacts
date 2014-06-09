@@ -40,6 +40,26 @@ _CONTACTS_SAVING_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/contact/batch/'
 
 
 def save_contacts(contacts, connection):
+    """
+    Request the creation and/or update of the ``contacts``.
+    
+    :param iterable contacts: The contacts to be created/updated
+    :return: ``None``
+    :raises hubspot.connection.exc.HubspotException:
+    :raises hubspot.contacts.exc.HubspotPropertyValueError: If one of the
+        property values on a contact is invalid.
+    
+    For each contact, only its email address and properties are passed to
+    HubSpot. Any other datum (e.g., the VID) is ignored.
+    
+    As at this writing, this end-point does not process the requested changes
+    immediately. Instead, it **partially** validates the input and, if it's all
+    correct, the requested changes are queued.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/batch_create_or_update
+    
+    """
     contacts_batches = ipaginate(contacts, BATCH_SAVING_SIZE_LIMIT)
 
     contacts_first_batch = next(contacts_batches, None)
