@@ -32,6 +32,7 @@ Contact = Record.create_type(
     'email_address',
     'properties',
     'related_contact_vids',
+    related_contact_vids=(),
     )
 
 
