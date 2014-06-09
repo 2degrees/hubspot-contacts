@@ -61,6 +61,16 @@ _PROPERTIES_RETRIEVAL_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/properties'
 
 
 def get_all_properties(connection):
+    """
+    Get the meta-information for all the properties in the portal.
+    
+    :rtype: :class:`list` of :class:`Property` specialization instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/get_properties
+    
+    """
     from hubspot.contacts._schemas.properties import \
         GET_ALL_PROPERTIES_RESPONSE_SCHEMA
 
@@ -76,6 +86,17 @@ def get_all_properties(connection):
 
 
 def create_property(property_, connection):
+    """
+    Create ``property_``.
+    
+    :param Property property_: The property to be created
+    :return: :class:`Property` specialization instance as created by HubSpot
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/create_property
+    
+    """
     from hubspot.contacts._schemas.properties import \
         CREATE_PROPERTY_RESPONSE_SCHEMA
     from hubspot.contacts.request_data_formatters.properties import \
@@ -95,6 +116,17 @@ def create_property(property_, connection):
 
 
 def delete_property(property_name, connection):
+    """
+    Delete the property named ``property_name``.
+    
+    :param Property property_name: The name of the property to be deleted
+    :return: ``None``
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/delete_property
+    
+    """
     url_path = CONTACTS_API_SCRIPT_NAME + '/properties/' + property_name
     connection.send_delete_request(url_path)
 
