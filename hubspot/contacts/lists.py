@@ -65,6 +65,14 @@ ContactList = Record.create_type(
 
 
 def create_static_contact_list(contact_list_name, connection):
+    """
+    Create a static contact list named ``contact_list_name``.
+    
+    :param basestring contact_list_name:
+    :return ContactList: The resulting list as created by HubSpot
+    :raises hubspot.connection.exc.HubspotException:
+    
+    """
     contact_list_data = connection.send_post_request(
         _CONTACT_LIST_COLLECTION_URL_PATH,
         {'name': contact_list_name, 'dynamic': False},
@@ -74,6 +82,21 @@ def create_static_contact_list(contact_list_name, connection):
 
 
 def get_all_contact_lists(connection):
+    """
+    Get the meta-information for all the contact lists in the portal.
+    
+    :return: An iterator with :class:`ContactList` instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    This function is a generator and requests are sent on demand. This is, the
+    first request to HubSpot is deferred until the first list in the result
+    is used, and from there on subsequent requests may be sent as the iterator
+    is consumed.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/get_lists
+    
+    """
     data_retriever = PaginatedDataRetriever('lists', ['offset'])
     contact_lists_data = \
         data_retriever.get_data(connection, _CONTACT_LIST_COLLECTION_URL_PATH)
@@ -82,6 +105,18 @@ def get_all_contact_lists(connection):
 
 
 def delete_contact_list(contact_list_id, connection):
+    """
+    Delete the contact list identified by ``contact_list_id``.
+    
+    :param int contact_list_id: The identifier of the contact list to be removed
+    :return: ``None``
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/delete_list
+    
+    """
+    contact_list_id = int(contact_list_id)
     url_path = \
         '{}/{}'.format(_CONTACT_LIST_COLLECTION_URL_PATH, contact_list_id)
     connection.send_delete_request(url_path)
@@ -104,6 +139,20 @@ def _build_contact_list_from_data(contact_list_data):
 
 
 def add_contacts_to_list(contact_list, contacts, connection):
+    """
+    Add ``contacts`` to ``contact_list``.
+    
+    :param ContactList contact_list: The list to which ``contacts`` must be
+        added
+    :param iterator contacts: The contacts to add to ``contact_list``
+    :return: The VIDs corresponding to the contacts that were successfully
+        added to the list
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/add_contact_to_list
+    
+    """
     path_info = '/lists/{}/add'.format(contact_list.id)
     updated_contact_vids = _update_contact_list_membership(
         CONTACTS_API_SCRIPT_NAME + path_info,
@@ -114,6 +163,20 @@ def add_contacts_to_list(contact_list, contacts, connection):
 
 
 def remove_contacts_from_list(contact_list, contacts, connection):
+    """
+    Remove ``contacts`` from ``contact_list``.
+    
+    :param ContactList contact_list: The list from which ``contacts`` must be
+        removed
+    :param iterator contacts: The contacts to remove from ``contact_list``
+    :return: The VIDs corresponding to the contacts that were successfully
+        removed from the list
+    :raises hubspot.connection.exc.HubspotException:
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/remove_contact_from_list
+    
+    """
     path_info = '/lists/{}/remove'.format(contact_list.id)
     updated_contact_vids = _update_contact_list_membership(
         CONTACTS_API_SCRIPT_NAME + path_info,
@@ -141,6 +204,34 @@ def _update_contact_list_membership(endpoint_url_path, contacts, connection):
 
 
 def get_all_contacts(connection, property_names=()):
+    """
+    Get all the contacts in the portal.
+    
+    :param property_names: The names of the properties to be retrieved for each
+        contact
+    :return: An iterator with :class:`Contact` instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    If ``property_names`` is empty, no specific properties are requested to
+    HubSpot. Otherwise, values are passed as is to HubSpot.
+    
+    This function is a generator and requests are sent on demand. This is, the
+    first request to HubSpot is deferred until the first contact in the result
+    is used, and from there on subsequent requests may be sent as the iterator
+    is consumed.
+    
+    Generally speaking, the contacts returned, their order and their properties
+    are determined by HubSpot, with the following exceptions:
+    
+    - Property values in each contact are type-cast to an appropriate, built-in
+      datatype.
+    - Duplicated contacts (i.e., multiple contacts with the same *VID*) are
+      discarded.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/get_contacts
+    
+    """
     all_contacts = _get_contacts_from_all_pages(
         '/lists/all/contacts/all',
         connection,
@@ -154,6 +245,32 @@ def get_all_contacts_by_last_update(
     property_names=(),
     cutoff_datetime=None,
     ):
+    """
+    Get all the contacts in the portal, starting with the most recently updated
+    ones.
+    
+    :param property_names: The names of the properties to be retrieved for each
+        contact
+    :param datetime.datetime cutoff_datetime: The minimum datetime for the last
+        update to any contact returned
+    :return: An iterator with :class:`Contact` instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    If ``cutoff_datetime`` is set, only contacts that were last updated at that
+    time or later are returned. If unset, all the contacts are returned and
+    sorted by their last update (most recent first).
+    
+    Apart from the special considerations given to the contacts' last update
+    date, this behaves exactly like :func:`get_all_contacts`. But because this
+    uses a different HubSpot API end-point, the output may be slightly
+    different; for instance, as at this writing, one known difference is that
+    this end-point also returns contacts for whom there are no registered email
+    addresses.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/contacts/get_recently_updated_contacts
+    
+    """
     return _get_contacts_from_all_pages_by_recency(
         'recently_updated',
         connection,
@@ -168,6 +285,29 @@ def get_all_contacts_from_list_by_added_date(
     property_names=(),
     cutoff_datetime=None,
     ):
+    """
+    Get all the contacts in ``contact_list``, starting with the most recently
+    added ones.
+    
+    :param ContactList contact_list: The list whose contacts should be retrieved
+    :param property_names: The names of the properties to be retrieved for each
+        contact
+    :return: An iterator with :class:`Contact` instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    If ``cutoff_datetime`` is set, only contacts that were added at that time or
+    later are returned. If unset, all the contacts in the list are returned and
+    sorted by the time they were added (most recent first).
+    
+    Apart from the special considerations given to the time the contact was
+    added to the list, this function behaves exactly like
+    :func:`get_all_contacts_from_list`. But because this uses a different
+    HubSpot API end-point, the output may be slightly different.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/get_list_contacts_recent
+    
+    """
     return _get_contacts_from_all_pages_by_recency(
         contact_list.id,
         connection,
@@ -217,6 +357,23 @@ def _get_contacts_from_all_pages_by_recency(
 
 
 def get_all_contacts_from_list(connection, contact_list, property_names=()):
+    """
+    Get all the contacts in ``contact_list``.
+    
+    :param ContactList contact_list: The list whose contacts should be retrieved
+    :param property_names: The names of the properties to be retrieved for each
+        contact
+    :return: An iterator with :class:`Contact` instances
+    :raises hubspot.connection.exc.HubspotException:
+    
+    Other than the contacts being limited to ``contact_list``, this function
+    behaves exactly like :func:`get_all_contacts`. But because this uses a
+    different HubSpot API end-point, the output may be slightly different.
+    
+    End-point documentation:
+    http://developers.hubspot.com/docs/methods/lists/get_list_contacts
+    
+    """
     contacts_from_list = _get_contacts_from_all_pages(
         '/lists/{}/contacts/all'.format(contact_list.id),
         connection,
