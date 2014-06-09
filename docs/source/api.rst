@@ -148,3 +148,10 @@ Exceptions raised by **hubspot-connection**
 When HubSpot fails to process a request made by any of the functions in this
 library, **hubspot-connection** will raise an exception that sub-classes
 :exc:`hubspot.connection.exc.HubspotException`.
+
+
+Notes
+-----
+
+- Datetime objects are timezone-naive but should still match the timezone used
+  by HubSpot.

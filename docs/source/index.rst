@@ -48,5 +48,4 @@ Contents
    
    tutorial
    api
-   notes
    changelog
