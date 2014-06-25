@@ -146,6 +146,11 @@ class _PaginatedObjectsRetriever(object):
 
 
 class GetAllContacts(_PaginatedObjectsRetriever):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.get_all_contacts`.
+    
+    """
 
     _API_CALL_PATH_INFO = '/lists/all/contacts/all'
 
@@ -163,6 +168,18 @@ class GetAllContacts(_PaginatedObjectsRetriever):
         convert_date_to_timestamp_in_milliseconds(STUB_LAST_MODIFIED_DATETIME)
 
     def __init__(self, contacts, available_properties, property_names=()):
+        """
+        
+        :param iterable contacts: :class:`~hubspot.contacts.Contact` instances
+            for all the contacts supposedly in the portal.
+        :param iterable available_properties:
+            :class:`~hubspot.contacts.properties.Property` instances for all
+            the properties supposedly defined in the portal.
+        :param iterable property_names: The names of the properties that
+            :func:`~hubspot.contacts.lists.get_all_contacts` is expected to
+            request.
+        
+        """
         super(GetAllContacts, self).__init__(contacts)
 
         available_properties += [self._LAST_MODIFIED_DATE_PROPERTY]
@@ -344,6 +361,11 @@ UnsuccessfulGetAllContacts = \
 
 
 class GetAllContactsByLastUpdate(GetAllContacts):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.get_all_contacts_by_last_update`.
+    
+    """
 
     _API_CALL_PATH_INFO = '/lists/recently_updated/contacts/recent'
 
@@ -361,6 +383,55 @@ class GetAllContactsByLastUpdate(GetAllContacts):
         property_names=(),
         cutoff_datetime=None,
         ):
+        """
+        
+        :param iterable contacts: :class:`~hubspot.contacts.Contact` instances
+            for all the contacts supposedly in the portal.
+        :param iterable available_properties:
+            :class:`~hubspot.contacts.properties.Property` instances for all
+            the properties supposedly defined in the portal.
+        :param iterable property_names: The names of the properties that
+            :func:`~hubspot.contacts.lists.get_all_contacts` is expected to
+            request.
+        :param datetime.datetime cutoff_datetime: The
+            :class:`~datetime.datetime` that is expected to be passed to
+            :func:`~hubspot.contacts.lists.get_all_contacts_by_last_update`.
+        
+        When ``cutoff_datetime`` is unset, this simulator works exactly like
+        :class:`GetAllContacts` -- Except that it uses a different API
+        end-point. The order of the returned contacts match that of
+        ``contacts``.
+        
+        Given that
+        :func:`~hubspot.contacts.lists.get_all_contacts_by_last_update`
+        relies on the last modified time of each contact to filter out those
+        which were last changed before ``cutoff_datetime``, this
+        simulator assigns a fake, decreasing value to each contact in the
+        response.
+        
+        Therefore, if you need to test the effects of ``cutoff_datetime``,
+        you ought to pre-compute such values with
+        :meth:`get_contact_added_at_datetime`. E.g.::
+        
+            contacts = [
+                Contact(vid=1, email_address='1@example.com', properties={}),
+                Contact(vid=2, email_address='2@example.com', properties={}),
+                Contact(vid=3, email_address='3@example.com', properties={}),
+                ]
+            # We expect get_all_contacts_by_last_update to exclude the last
+            # contact:
+            cutoff_datetime = \\
+                GetAllContactsByLastUpdate.get_contact_added_at_datetime(
+                    contacts[1],
+                    contacts,
+                    )
+            simulator = GetAllContactsByLastUpdate(
+                contacts,
+                available_properties,
+                cutoff_datetime=cutoff_datetime,
+                )
+        
+        """
 
         filtered_contacts = self._exclude_contacts_pages_after_cutoff_datetime(
             contacts,
@@ -441,6 +512,26 @@ class GetAllContactsByLastUpdate(GetAllContacts):
 
     @classmethod
     def get_contact_added_at_datetime(cls, contact, contacts):
+        """
+        Compute the fake last modification time that would be assigned to
+        ``contact`` inside ``contacts``.
+        
+        :param hubspot.contacts.Contact contact: A contact in ``contacts``
+        :param iterable contacts: A collection containing ``contact``
+        :return: :class:`~datetime.datetime` for the last modification time
+            corresponding to ``contact``
+        
+        This method refers to the "added at" term, which is a piece of meta-data
+        that HubSpot attaches to each contact returned via the end-point for
+        the recently updated contacts. In spite of its name, this datum is
+        effectively the last modified date, but not exactly the same as the
+        "lastmodifieddate" property.
+        
+        The ``cutoff_datetime`` passed to this simulator is compared against
+        the "added at" value of the contact, not the "lastmodifieddate"
+        property.
+        
+        """
         contact_index = contacts.index(contact)
         contact_added_at_timestamp = \
             cls._MOST_RECENT_CONTACT_UPDATE_TIMESTAMP - contact_index
@@ -463,8 +554,20 @@ UnsuccessfulGetAllContactsByLastUpdate = \
 
 
 class SaveContacts(object):
+    """
+    Simulator for a successful call to :func:`~hubspot.contacts.save_contacts`.
+    
+    """
 
     def __init__(self, contacts, available_properties):
+        """
+        
+        :param iterable contacts: Contacts to be supposedly saved
+        :param iterable available_properties:
+            :class:`~hubspot.contacts.properties.Property` instances for all
+            the properties supposedly defined in the portal
+        
+        """
         super(SaveContacts, self).__init__()
 
         self._contacts_by_page = paginate(contacts, BATCH_SAVING_SIZE_LIMIT)
@@ -497,8 +600,22 @@ class SaveContacts(object):
 
 
 class UnsuccessfulSaveContacts(SaveContacts):
+    """
+    Simulator for an usuccessful call to
+    :func:`~hubspot.contacts.save_contacts`.
+    
+    """
 
     def __init__(self, contacts, exception, available_properties):
+        """
+        
+        :param iterable contacts: Contacts to be supposedly saved
+        :param Exception exception:
+        :param iterable available_properties:
+            :class:`~hubspot.contacts.properties.Property` instances for all
+            the properties supposedly defined in the portal
+        
+        """
         super(UnsuccessfulSaveContacts, self).__init__(
             contacts,
             available_properties,
@@ -522,8 +639,20 @@ class UnsuccessfulSaveContacts(SaveContacts):
 
 
 class GetAllProperties(object):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.properties.get_all_properties`.
+    
+    """
 
     def __init__(self, properties):
+        """
+        
+        :param iterable properties: \
+            :class:`~hubspot.contacts.properties.Property` instances \
+            for all the properties supposedly defined in the portal.
+        
+        """
         super(GetAllProperties, self).__init__()
         self._properties = properties
 
@@ -543,6 +672,12 @@ class _BaseCreateProperty(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, property_):
+        """
+        
+        :param hubspot.contacts.properties.Property property_: The property
+            to be supposedly created.
+        
+        """
         super(_BaseCreateProperty, self).__init__()
         self._property = property_
 
@@ -564,6 +699,11 @@ class _BaseCreateProperty(object):
 
 
 class CreateProperty(_BaseCreateProperty):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.properties.create_property`.
+    
+    """
 
     def _get_api_call(self):
         super_ = super(CreateProperty, self)._get_api_call()
@@ -576,6 +716,11 @@ class CreateProperty(_BaseCreateProperty):
 
 
 class UnsuccessfulCreateProperty(_BaseCreateProperty):
+    """
+    Simulator for an unsuccessful call to
+    :func:`~hubspot.contacts.properties.create_property`.
+    
+    """
 
     def __init__(self, property_, exception):
         super(UnsuccessfulCreateProperty, self).__init__(property_)
@@ -724,6 +869,11 @@ class DeletePropertyGroup(object):
 
 
 class GetAllContactLists(_PaginatedObjectsRetriever):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.get_all_contact_lists`.
+    
+    """
 
     _API_CALL_PATH_INFO = '/lists'
 
@@ -781,6 +931,11 @@ class _BaseCreateStaticContactList(object):
 
 
 class CreateStaticContactList(_BaseCreateStaticContactList):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.create_static_contact_list`.
+    
+    """
 
     def _get_api_call(self):
         super_ = \
@@ -797,8 +952,20 @@ class CreateStaticContactList(_BaseCreateStaticContactList):
 
 
 class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
+    """
+    Simulator for an unsuccessful call to
+    :func:`~hubspot.contacts.lists.create_static_contact_list`.
+    
+    """
 
     def __init__(self, contact_list_name, exception):
+        """
+        
+        :param basestring contact_list_name: The name of the static list to be
+            supposedly created
+        :param Exception exception:
+        
+        """
         super_ = super(UnsuccessfulCreateStaticContactList, self)
         super_.__init__(contact_list_name)
         self._exception = exception
@@ -815,8 +982,19 @@ class UnsuccessfulCreateStaticContactList(_BaseCreateStaticContactList):
 
 
 class DeleteContactList(object):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.delete_contact_list`.
+    
+    """
 
     def __init__(self, contact_list_id):
+        """
+        
+        :param basestring contact_list_id: The id of the static list to be
+            supposedly deleted
+        
+        """
         super(DeleteContactList, self).__init__()
         self._contact_list_id = contact_list_id
 
@@ -878,10 +1056,25 @@ class _UpdateContactListMembership(object):
 
 
 class AddContactsToList(_UpdateContactListMembership):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.add_contacts_to_list`.
+    
+    """
 
     url_path_list_action = 'add'
 
     def __init__(self, contact_list, contacts_to_add, updated_contacts):
+        """
+        
+        :param hubspot.contacts.lists.ContactList contact_list: The list
+            that would supposedly receive ``contacts_to_add``
+        :param iterable contacts_to_add: The :class:`~hubspot.contacts.Contact`
+            instances to be supposedly added to ``contact_list``
+        :param iterable updated_contacts: The :class:`~hubspot.contacts.Contact`
+            instances that would have been supposedly added to ``contact_list``
+        
+        """
         super(AddContactsToList, self).__init__(
             contact_list,
             contacts_to_add,
@@ -890,10 +1083,27 @@ class AddContactsToList(_UpdateContactListMembership):
 
 
 class RemoveContactsFromList(_UpdateContactListMembership):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.remove_contacts_from_list`.
+    
+    """
 
     url_path_list_action = 'remove'
 
     def __init__(self, contact_list, contacts_to_remove, updated_contacts):
+        """
+        
+        :param hubspot.contacts.lists.ContactList contact_list: The list
+            that would supposedly have ``contacts_to_remove`` removed
+        :param iterable contacts_to_remove: The
+            :class:`~hubspot.contacts.Contact` instances to be supposedly
+            removed from ``contact_list``
+        :param iterable updated_contacts: The :class:`~hubspot.contacts.Contact`
+            instances that would have been supposedly removed from
+            ``contact_list``
+        
+        """
         super(RemoveContactsFromList, self).__init__(
             contact_list,
             contacts_to_remove,
@@ -902,6 +1112,14 @@ class RemoveContactsFromList(_UpdateContactListMembership):
 
 
 class GetContactsFromList(GetAllContacts):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.get_all_contacts_from_list`.
+    
+    This behaves exactly like :class:`GetAllContacts`, except that it works on
+    a specific contact list and therefore uses a different API end-point.
+    
+    """
 
     _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/all'
 
@@ -923,6 +1141,15 @@ class GetContactsFromList(GetAllContacts):
 
 
 class GetContactsFromListByAddedDate(GetAllContactsByLastUpdate):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.lists.get_all_contacts_from_list_by_added_date`.
+    
+    This behaves exactly like :class:`GetAllContactsByLastUpdate`, except that
+    it works on a specific contact list and therefore uses a different API
+    end-point.
+    
+    """
 
     _API_CALL_PATH_INFO_TEMPLATE = '/lists/{}/contacts/recent'
 

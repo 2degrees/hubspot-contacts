@@ -36,8 +36,16 @@ Here's an example of how it can be used::
     Contact(vid=1, email_address=u'foo@example.com', properties={u'lastname': u'Smith', u'company': u'ACME Ltd.', u'firstname': u'John', u'lastmodifieddate': datetime.datetime(2014, 5, 30, 15, 32, 7, 192000)}, related_contact_vids=[])
     Contact(vid=2, email_address=u'bar@example.com', properties={u'lastname': u'Doe', u'company': u'Example Inc.', u'firstname': u'Alice', u'lastmodifieddate': datetime.datetime(2014, 5, 29, 15, 37, 52, 447000)}, related_contact_vids=[])
 
-This project is officially supported under Python 2.7 but may work with
+This project is officially supported under Python 2.7, but may work with
 Python 2.6 and Python 3.
+
+**hubspot-contacts** depends on `hubspot-connection
+<http://pythonhosted.org/hubspot-connection>`_, a separate library
+that abstracts the low-level communication with HubSpot and takes care of
+authentication, among other things.
+
+To get started, find the functions you need in the :doc:`api` and then
+read :doc:`testing`.
 
 
 Contents
@@ -46,6 +54,7 @@ Contents
 .. toctree::
    :maxdepth: 1
    
-   tutorial
    api
+   testing
    changelog
+   support

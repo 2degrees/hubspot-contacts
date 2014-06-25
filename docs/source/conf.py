@@ -270,4 +270,5 @@ intersphinx_mapping = {
     }
 
 
+autoclass_content = 'both'
 autodoc_default_flags = ['members', 'show-inheritance']

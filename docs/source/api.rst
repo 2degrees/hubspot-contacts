@@ -1,6 +1,17 @@
 API Documentation
 =================
 
+Keep the following in mind while using the functions provided by this library:
+
+- You should only use the connection from a context manager so that any startup
+  or shutdown routine can be executed.
+- Date and datetime objects are timezone-naive but should still match the
+  timezone used by HubSpot (UTC as at this writing).
+- When HubSpot fails to process a request made by any of the functions in this
+  library, **hubspot-connection** will raise an exception that sub-classes
+  :exc:`hubspot.connection.exc.HubspotException`.
+
+
 Contacts API
 ------------
 
@@ -109,19 +120,75 @@ Properties
 Supported Datatypes
 ^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: Property
+.. class:: Property
 
-.. autoclass:: BooleanProperty
+    Base class for a HubSpot property.
+    
+    The following attributes correspond to the same data associated to a
+    particular property on HubSpot.
+    
+    .. attribute:: name
+    
+    .. attribute:: label
+    
+    .. attribute:: description
+    
+    .. attribute:: group_name
+    
+    .. attribute:: field_widget
+    
+        HubSpot usually refers to this as the "field type", even though it
+        isn't strictly do to with data types. Instead, this attribute refers
+        to the type of widget to be used when displaying/capturing the property
+        value (e.g., a date picker for a :class:`DateProperty`).
 
-.. autoclass:: DateProperty
 
-.. autoclass:: DatetimeProperty
+.. class:: BooleanProperty
 
-.. autoclass:: EnumerationProperty
+    :bases: :class:`Property`
+    
+    .. attribute:: true_label
+        
+        The user-friendly string to refer to property value ``True`` when
+        presented on HubSpot. By default, this is ``"Yes"``.
+    
+    .. attribute:: false_label
+        
+        The user-friendly string to refer to property value ``False`` when
+        presented on HubSpot. By default, this is ``"No"``.
+    
 
-.. autoclass:: NumberProperty
+.. class:: DateProperty
 
-.. autoclass:: StringProperty
+    :bases: :class:`Property`
+
+.. class:: DatetimeProperty
+
+    :bases: :class:`Property`
+
+.. class:: EnumerationProperty
+
+    :bases: :class:`Property`
+
+    The definition of an enum(eration) property.
+    
+    .. attribute:: options
+    
+        A mapping with all the possible values for the enumeration.
+        
+        The mapping keys are the property values and the mapping values are
+        the user-friendly labels for each property value. For example::
+        
+            {'gbp': 'Pound Sterling', 'eur': 'Euro', 'usd': 'US Dollar'}
+        
+
+.. class:: NumberProperty
+
+    :bases: :class:`Property`
+
+.. class:: StringProperty
+
+    :bases: :class:`Property`
 
 
 Property Groups
@@ -140,18 +207,3 @@ Supported Datatypes
 ^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: PropertyGroup
-
-
-Exceptions raised by **hubspot-connection**
--------------------------------------------
-
-When HubSpot fails to process a request made by any of the functions in this
-library, **hubspot-connection** will raise an exception that sub-classes
-:exc:`hubspot.connection.exc.HubspotException`.
-
-
-Notes
------
-
-- Datetime objects are timezone-naive but should still match the timezone used
-  by HubSpot.
