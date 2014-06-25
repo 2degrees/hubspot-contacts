@@ -772,8 +772,20 @@ class DeleteProperty(object):
 
 
 class GetAllPropertyGroups(object):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.property_groups.get_all_property_groups`.
+    
+    """
 
     def __init__(self, property_groups):
+        """
+        
+        :param iterable property_groups: \
+            :class:`~hubspot.contacts.property_groups.PropertyGroup` instances \
+            for all the property groups supposedly defined in the portal.
+        
+        """
         super(GetAllPropertyGroups, self).__init__()
 
         self._property_groups = property_groups
@@ -798,6 +810,12 @@ class _BaseCreatePropertyGroup(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, property_group):
+        """
+        
+        :param hubspot.contacts.property_groups.PropertyGroup property_group: \
+            Property group to be supposedly created.
+        
+        """
         super(_BaseCreatePropertyGroup, self).__init__()
 
         self._property_group = property_group
@@ -821,6 +839,11 @@ class _BaseCreatePropertyGroup(object):
 
 
 class CreatePropertyGroup(_BaseCreatePropertyGroup):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.property_groups.create_property_group`.
+    
+    """
 
     def _get_api_call(self):
         super_ = super(CreatePropertyGroup, self)._get_api_call()
@@ -835,8 +858,20 @@ class CreatePropertyGroup(_BaseCreatePropertyGroup):
 
 
 class UnsuccessfulCreatePropertyGroup(_BaseCreatePropertyGroup):
+    """
+    Simulator for an unsuccessful call to
+    :func:`~hubspot.contacts.property_groups.create_property_group`.
+    
+    """
 
     def __init__(self, property_group, exception):
+        """
+        
+        :param hubspot.contacts.property_groups.PropertyGroup property_group: \
+            Property group to be supposedly created.
+        :param Exception exception:
+        
+        """
         super(UnsuccessfulCreatePropertyGroup, self).__init__(property_group)
 
         self._exception = exception
@@ -870,8 +905,19 @@ def _format_response_data_for_properties(properties):
 
 
 class DeletePropertyGroup(object):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.property_groups.delete_property_group`.
+    
+    """
 
     def __init__(self, property_group_name):
+        """
+        
+        :param basestring property_group_name: The name of the property group \
+            to be supposedly deleted.
+        
+        """
         super(DeletePropertyGroup, self).__init__()
         self._property_group_name = property_group_name
 
