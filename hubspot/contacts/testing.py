@@ -674,7 +674,7 @@ class _BaseCreateProperty(object):
     def __init__(self, property_):
         """
         
-        :param hubspot.contacts.properties.Property property_: The property
+        :param hubspot.contacts.properties.Property property_: The property \
             to be supposedly created.
         
         """
@@ -723,6 +723,13 @@ class UnsuccessfulCreateProperty(_BaseCreateProperty):
     """
 
     def __init__(self, property_, exception):
+        """
+        
+        :param hubspot.contacts.properties.Property property_: The property \
+            to be supposedly created.
+        :param Exception exception:
+        
+        """
         super(UnsuccessfulCreateProperty, self).__init__(property_)
         self._exception = exception
 
@@ -737,8 +744,19 @@ class UnsuccessfulCreateProperty(_BaseCreateProperty):
 
 
 class DeleteProperty(object):
+    """
+    Simulator for a successful call to
+    :func:`~hubspot.contacts.properties.delete_property`.
+    
+    """
 
     def __init__(self, property_name):
+        """
+        
+        :param basestring property_name: The name of the property to be \
+            supposedly deleted.
+        
+        """
         super(DeleteProperty, self).__init__()
         self._property_name = property_name
 
@@ -991,7 +1009,7 @@ class DeleteContactList(object):
     def __init__(self, contact_list_id):
         """
         
-        :param basestring contact_list_id: The id of the static list to be
+        :param basestring contact_list_id: The id of the static list to be \
             supposedly deleted
         
         """

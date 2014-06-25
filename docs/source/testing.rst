@@ -133,4 +133,3 @@ Contact Property Groups
 .. autoclass:: DeletePropertyGroup
 
 .. autoclass:: UnsuccessfulCreatePropertyGroup
-
