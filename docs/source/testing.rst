@@ -32,13 +32,14 @@ The mock portal connection is initialized with zero or more so-called "api
 call simulators" (or simply "simulators"), which are passed by position. The
 purpose of a simulator is twofold:
 
-- One the one hand, it tells the connection what exactly you expect will get
+- On the one hand, it tells the connection what exactly you expect will get
   sent to HubSpot. If the wrong API end-point is called or the right one is
   called with the wrong arguments, an ``AssertionError`` would be raised by the
   connection.
 - On the other hand, you can use it to forge the response that HubSpot would
   give to a particular request. In the example above, we replicated the case
-  where HubSpot responded that there were no contact lists in the portal.
+  where HubSpot responded that there were exactly one contact list in the
+  portal.
 
 By using the mock portal connection as a context manager, you also ensure that
 all of the specified API end-points are called and nothing else.
@@ -51,7 +52,7 @@ this library.
 Simulators
 ----------
 
-Each of the end-points supported by this library ship with a simulator for
+Each of the end-points supported by this library ships with a simulator for
 cases where the request completes successfully. In some cases, a simulator for
 error cases is also provided; their constructors largely share the same
 signature as their successful counterparts, but they also require the exception

@@ -119,7 +119,7 @@ def delete_property(property_name, connection):
     """
     Delete the property named ``property_name``.
     
-    :param Property property_name: The name of the property to be deleted
+    :param basestring property_name: The name of the property to be deleted
     :return: ``None``
     :raises hubspot.connection.exc.HubspotException:
     
