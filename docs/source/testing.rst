@@ -13,7 +13,8 @@ Imagine that you'd like to write unit tests for the function below::
 
 One of the cases that you'd like to test would be when there's exactly one
 list. You'd test this unit by passing a so-called "mock portal connection"
-instead of a regular portal connection; e.g.::
+instead of a regular connection, along with a so-called "simulator" for each of
+the end-points that you expect will get called; e.g.::
 
     from hubspot.connection.testing import MockPortalConnection
     from hubspot.contacts.lists import ContactList
