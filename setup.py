@@ -39,6 +39,11 @@ setup(
         'Contact Lists and Contact Properties APIs',
     long_description=_LONG_DESCRIPTION,
     classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: BSD License',
+        'Natural Language :: English',
+        'Programming Language :: Python',
         ],
     keywords='hubspot contacts lists properties',
     author='2degrees Limited',
