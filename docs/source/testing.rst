@@ -7,7 +7,7 @@ thus allowing you to unit test your code on top of **hubspot-contacts**.
 Imagine that you'd like to write unit tests for the function below::
 
     from hubspot.contacts.lists import get_contact_lists
-    
+
     def get_contact_list_names(connection):
         return [list_.name for list_ in get_contact_lists(connection)]
 
@@ -25,11 +25,11 @@ the end-points that you expect will get called; e.g.::
         simulator = GetAllContactLists([contact_list])
         with MockPortalConnection(simulator) as connection:
             contact_list_names = get_contact_list_names(connection)
-            
+
         assert len(contact_list_names) == 1
         assert contact_list_names[0] == contact_list.name
 
-The mock portal connection is initialized with zero or more so-called "api
+The mock portal connection is initialized with zero or more so-called "API
 call simulators" (or simply "simulators"), which are passed by position. The
 purpose of a simulator is twofold:
 
@@ -70,17 +70,17 @@ instance that is expected to be raised.
 .. class:: UnsuccessfulGetAllContacts
 
     The unsuccessful counterpart to :class:`GetAllContacts`.
-    
+
     .. method:: __init__(contacts, exception, *args, **kwargs)
-    
+
         The additional arguments are passed to :class:`GetAllContacts`.
 
 .. class:: UnsuccessfulGetAllContactsByLastUpdate
 
     The unsuccessful counterpart to :class:`GetAllContactsByLastUpdate`.
-    
+
     .. method:: __init__(contacts, exception, *args, **kwargs)
-    
+
         The additional arguments are passed to
         :class:`GetAllContactsByLastUpdate`.
 
@@ -93,7 +93,7 @@ Contact Lists
 .. autoclass:: GetAllContactLists
 
     .. method:: __init__(contact_lists)
-    
+
         :param iterable contact_lists:
             :class:`~hubspot.contacts.lists.ContactList` instances for all the
             contact lists supposedly in the portal
