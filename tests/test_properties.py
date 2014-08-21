@@ -147,6 +147,26 @@ class TestCreatingProperty(object):
             STUB_BOOLEAN_PROPERTY,
             )
 
+    def test_boolean_property_with_widget_type(self):
+        stub_boolean_property = STUB_BOOLEAN_PROPERTY.copy()
+        stub_boolean_property.widget_type = 'text'
+        self._check_create_property(
+            stub_boolean_property,
+            stub_boolean_property,
+            )
+
+    def test_boolean_property_without_widget_type(self):
+        stub_boolean_property = STUB_BOOLEAN_PROPERTY.copy()
+        stub_boolean_property.widget_type = None
+
+        expected_boolean_property = STUB_BOOLEAN_PROPERTY.copy()
+        expected_boolean_property.widget_type = 'booleancheckbox'
+
+        self._check_create_property(
+            stub_boolean_property,
+            expected_boolean_property,
+            )
+
     @classmethod
     def _check_create_property(cls, property_, expected_property):
         simulator = CreateProperty(property_)

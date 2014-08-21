@@ -14,18 +14,25 @@
 #
 ##############################################################################
 
+from hubspot.contacts.properties import BooleanProperty
 from hubspot.contacts.properties import PROPERTY_TYPE_BY_NAME
 
 
 def format_data_for_property(property_):
     property_type = _get_property_type_name(property_)
     property_options = _get_raw_property_options(property_)
+
+    if isinstance(property_, BooleanProperty) and not property_.field_widget:
+        field_widget = 'booleancheckbox'
+    else:
+        field_widget = property_.field_widget
+
     property_data = {
         'name': property_.name,
         'label': property_.label,
         'description': property_.description,
         'groupName': property_.group_name,
-        'fieldType': property_.field_widget,
+        'fieldType': field_widget,
         'type': property_type,
         'options': property_options,
         }
