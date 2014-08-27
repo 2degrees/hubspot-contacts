@@ -53,7 +53,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     namespace_packages=['hubspot'],
     install_requires=[
-        'hubspot-connection',
+        'hubspot-connection >= 1.0rc2',
         'pyrecord >= 1.0a1',
         'voluptuous >= 0.8.4',
         ],

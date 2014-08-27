@@ -1,6 +1,5 @@
 language: python
 python: '2.7'
-before_install: pip install -e git+https://github.com/2degrees/hubspot-connection.git@658b81fa18b70d2b33ab0effacdda975f360e5b8#egg=hubspot_connection-master
 install: pip install .
 before_script: pip install -r tests/requirements.txt
 script:
