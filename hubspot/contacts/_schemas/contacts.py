@@ -38,6 +38,14 @@ _CANONICAL_IDENTITY_PROFILE_SCHEMA = All(
 
 _IS_PROPERTY_VALUE = Schema({'value': unicode}, required=True, extra=True)
 
+
+_IDENTITY_PROFILE_SCHEMA = Schema(
+    {'vid': int, 'identities': Any([], _CANONICAL_IDENTITY_PROFILE_SCHEMA)},
+    extra=True,
+    required=True,
+    )
+
+
 CONTACT_SCHEMA = Schema(
     {
         'vid': int,
@@ -45,13 +53,7 @@ CONTACT_SCHEMA = Schema(
             unicode,
             All(_IS_PROPERTY_VALUE, GetDictValue('value')),
             ),
-        'identity-profiles': All(
-            [{
-                'vid': int,
-                'identities': Any([], _CANONICAL_IDENTITY_PROFILE_SCHEMA),
-                }],
-            Length(min=1),
-            ),
+        'identity-profiles': All([_IDENTITY_PROFILE_SCHEMA], Length(min=1)),
         },
     required=True,
     extra=True,
