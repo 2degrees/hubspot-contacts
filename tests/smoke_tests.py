@@ -19,13 +19,13 @@ from datetime import timedelta
 from os import environ
 from unittest.case import SkipTest
 
+from hubspot.connection import APIKey
+from hubspot.connection import PortalConnection
 from nose.tools import assert_in
 from nose.tools import assert_is_none
 from nose.tools import assert_items_equal
 from nose.tools import assert_not_in
 from nose.tools import eq_
-from hubspot.connection import APIKey
-from hubspot.connection import PortalConnection
 
 from hubspot.contacts import save_contacts
 from hubspot.contacts.lists import add_contacts_to_list
@@ -45,9 +45,7 @@ from hubspot.contacts.property_groups import create_property_group
 from hubspot.contacts.property_groups import delete_property_group
 from hubspot.contacts.property_groups import get_all_property_groups
 
-
 _CHANGE_SOURCE = __name__
-
 
 _SMOKE_TEST_API_KEY_ENVIRON_KEY = 'SMOKE_TEST_API_KEY'
 
@@ -62,7 +60,7 @@ def test_properties():
             'Just a test property',
             first_property_group.name,
             'text',
-            )
+        )
         created_property = create_property(property_to_create, connection)
         eq_(property_to_create, created_property)
 
@@ -107,24 +105,24 @@ def test_static_lists():
             created_static_list,
             [first_contact],
             connection,
-            )
+        )
         assert_in(first_contact.vid, added_contact_vids)
 
         contacts_in_list = list(
             get_all_contacts_from_list(connection, created_static_list)
-            )
+        )
         assert_in(first_contact, contacts_in_list)
 
         removed_contact_vids = remove_contacts_from_list(
             created_static_list,
             [first_contact],
             connection,
-            )
+        )
         assert_in(first_contact.vid, removed_contact_vids)
 
         contacts_in_list = list(
             get_all_contacts_from_list(connection, created_static_list)
-            )
+        )
         assert_not_in(first_contact, contacts_in_list)
 
         delete_contact_list(created_static_list.id, connection)
@@ -143,7 +141,7 @@ def test_getting_all_contacts():
         all_contacts = get_all_contacts(
             connection,
             property_names=requested_property_names,
-            )
+        )
         first_contact = next(all_contacts)
 
         expected_property_names = \
@@ -151,11 +149,13 @@ def test_getting_all_contacts():
         assert_items_equal(
             expected_property_names,
             first_contact.properties.keys(),
-            )
+        )
 
 
 def test_getting_all_contacts_by_last_update():
     with _get_portal_connection() as connection:
+        _update_random_contact(connection)  # Force an update
+
         all_contacts = get_all_contacts_by_last_update(connection)
         first_contact = next(all_contacts)
         assert_in('lastmodifieddate', first_contact.properties)
@@ -164,32 +164,37 @@ def test_getting_all_contacts_by_last_update():
         all_contacts = get_all_contacts_by_last_update(
             connection,
             property_names=requested_property_names,
-            )
+        )
         first_contact = next(all_contacts)
         expected_property_names = \
             ('lastmodifieddate',) + requested_property_names
         assert_items_equal(
             expected_property_names,
             first_contact.properties.keys(),
-            )
+        )
 
         contacts_from_future = get_all_contacts_by_last_update(
             connection,
             property_names=requested_property_names,
             cutoff_datetime=datetime.now() + timedelta(days=100),
-            )
+        )
         eq_([], list(contacts_from_future))
 
 
 def test_save_contacts():
     with _get_portal_connection() as connection:
-        all_contacts = get_all_contacts(connection)
-        first_contact = next(all_contacts)
-
-        del first_contact.properties['lastmodifieddate']
-
-        result = save_contacts([first_contact], connection)
+        result = _update_random_contact(connection)
         assert_is_none(result)
+
+
+def _update_random_contact(connection):
+    all_contacts = get_all_contacts(connection)
+    first_contact = next(all_contacts)
+
+    del first_contact.properties['lastmodifieddate']
+    first_contact.properties['lastname'] = 'First User'
+
+    return save_contacts([first_contact], connection)
 
 
 def _get_api_key():
@@ -199,8 +204,8 @@ def _get_api_key():
         raise SkipTest(
             '{!r} is not available in env'.format(
                 _SMOKE_TEST_API_KEY_ENVIRON_KEY,
-                ),
-            )
+            ),
+        )
 
     api_key = APIKey(api_key_value)
     return api_key
