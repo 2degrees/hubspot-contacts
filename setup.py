@@ -55,7 +55,7 @@ setup(
     install_requires=[
         'hubspot-connection >= 1.0rc2',
         'pyrecord >= 1.0a1',
-        'voluptuous == 0.8.4',
+        'voluptuous == 0.8.8',
         ],
     test_suite='nose.collector',
     )
