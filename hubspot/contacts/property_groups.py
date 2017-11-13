@@ -19,10 +19,11 @@ from voluptuous import Optional
 from voluptuous import Schema
 
 from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
+from hubspot.contacts._schemas.properties import \
+    PROPERTY_RESPONSE_SCHEMA_DEFINITION
 from hubspot.contacts.properties import _build_property_from_data
 from hubspot.contacts.request_data_formatters.property_groups import \
     format_data_for_property_group
-
 
 PropertyGroup = Record.create_type(
     'PropertyGroup',
@@ -31,28 +32,23 @@ PropertyGroup = Record.create_type(
     'properties',
     display_name=None,
     properties=(),
-    )
-
+)
 
 _PROPERTY_GROUP_CREATION_SCHEMA = Schema(
     {'name': unicode, 'displayName': unicode},
     required=True,
     extra=True,
-    )
-
-
-_PROPERTY_SCHEMA = {}
+)
 
 _PROPERTY_GROUPS_RETRIEVAL_SCHEMA = Schema(
     [{
         'name': unicode,
         'displayName': unicode,
-        Optional('properties'): [_PROPERTY_SCHEMA],
-        }],
+        Optional('properties'): [PROPERTY_RESPONSE_SCHEMA_DEFINITION],
+    }],
     required=True,
     extra=True,
-    )
-
+)
 
 _PROPERTY_GROUPS_RETRIEVAL_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/groups'
 
@@ -95,7 +91,7 @@ def create_property_group(property_group, connection):
     response_data = connection.send_put_request(
         url_path,
         request_body_deserialization,
-        )
+    )
     property_group_data = _PROPERTY_GROUP_CREATION_SCHEMA(response_data)
     created_property_group = \
         _build_property_group_from_data(property_group_data)
@@ -106,7 +102,7 @@ def _build_property_group_from_data(property_group_data):
     property_group = PropertyGroup(
         property_group_data['name'],
         property_group_data['displayName'],
-        )
+    )
 
     if 'properties' in property_group_data:
         properties_data = property_group_data['properties']
@@ -114,6 +110,7 @@ def _build_property_group_from_data(property_group_data):
         property_group.properties = properties
 
     return property_group
+
 
 def delete_property_group(property_group_name, connection):
     """

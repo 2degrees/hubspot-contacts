@@ -18,7 +18,6 @@ from pyrecord import Record
 
 from hubspot.contacts._constants import CONTACTS_API_SCRIPT_NAME
 
-
 Property = Record.create_type(
     'Property',
     'name',
@@ -26,7 +25,7 @@ Property = Record.create_type(
     'description',
     'group_name',
     'field_widget',
-    )
+)
 
 BooleanProperty = Property.extend_type(
     'BooleanProperty',
@@ -34,7 +33,7 @@ BooleanProperty = Property.extend_type(
     'false_label',
     true_label='Yes',
     false_label='No',
-    )
+)
 
 DateProperty = Property.extend_type('DateProperty')
 
@@ -46,6 +45,7 @@ NumberProperty = Property.extend_type('NumberProperty')
 
 StringProperty = Property.extend_type('StringProperty')
 
+PhoneNumberProperty = Property.extend_type('PhoneNumberProperty')
 
 PROPERTY_TYPE_BY_NAME = {
     'bool': BooleanProperty,
@@ -54,8 +54,8 @@ PROPERTY_TYPE_BY_NAME = {
     'enumeration': EnumerationProperty,
     'number': NumberProperty,
     'string': StringProperty,
-    }
-
+    'phone_number': PhoneNumberProperty,
+}
 
 _PROPERTIES_RETRIEVAL_URL_PATH = CONTACTS_API_SCRIPT_NAME + '/properties'
 
@@ -108,7 +108,7 @@ def create_property(property_, connection):
     response_data = connection.send_put_request(
         url_path,
         request_body_deserialization,
-        )
+    )
 
     property_data = CREATE_PROPERTY_RESPONSE_SCHEMA(response_data)
     created_property = _build_property_from_data(property_data)
@@ -155,7 +155,7 @@ def _build_property_from_data(property_data):
         property_data['groupName'],
         property_data['fieldType'],
         **additional_field_values
-        )
+    )
     return property_
 
 
